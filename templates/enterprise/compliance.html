@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise Edition · Compliance{% endblock %}
+{% block page_title %}SOC 2 / ISO 27001 Evidence Pack{% endblock %}
+{% block page_sub %}N4 — lets a CISO say "yes" without a 6-week audit{% endblock %}
+{% block content %}
+
+<div class="page-stripe"></div>
+
+<div class="page-hero hero-emerald">
+  <div class="ph-icn"><i class="material-icons">verified</i></div>
+  <div class="ph-body">
+    <h5>Ready-to-share compliance bundle</h5>
+    <p>
+      Hand this to the CISO with the SSO setup. The export is a single signed JSON
+      mapping our controls onto the SOC 2 TSC and ISO 27001 Annex A clauses they need to
+      see, plus data-flow diagrams and the live posture of THIS deployment.
+    </p>
+  </div>
+  <div class="ph-actions">
+    <a class="btn btn-primary" href="{{ url_for('enterprise.compliance_export') }}">
+      <i class="material-icons md-16">download</i> Download JSON pack
+    </a>
+  </div>
+</div>
+
+<div class="stat-strip">
+  <div class="stat-tile {{ 'success' if facts.encryption_at_rest else 'warn' }}">
+    <div class="st-label">Templates encrypted</div>
+    <div class="st-value">{{ 'ON' if facts.encryption_at_rest else 'OFF' }}</div>
+    <div class="st-sub">A.10 cryptography</div>
+  </div>
+  <div class="stat-tile {{ 'success' if facts.liveness else 'warn' }}">
+    <div class="st-label">Liveness gate</div>
+    <div class="st-value">{{ 'ON' if facts.liveness else 'OFF' }}</div>
+    <div class="st-sub">CC6 logical access</div>
+  </div>
+  <div class="stat-tile success">
+    <div class="st-label">Data residency</div>
+    <div class="st-value">{{ facts.data_residency }}</div>
+    <div class="st-sub">DPDP §16</div>
+  </div>
+  <div class="stat-tile {{ 'success' if facts.mfa_provider != 'none' else 'warn' }}">
+    <div class="st-label">MFA via</div>
+    <div class="st-value">{{ facts.mfa_provider }}</div>
+    <div class="st-sub">CC6.7</div>
+  </div>
+  <div class="stat-tile accent">
+    <div class="st-label">RBAC admins</div>
+    <div class="st-value">{{ facts.rbac_admins }}</div>
+    <div class="st-sub">A.9 access control</div>
+  </div>
+  <div class="stat-tile {{ 'success' if facts.sso_providers else 'warn' }}">
+    <div class="st-label">SSO providers</div>
+    <div class="st-value">{{ facts.sso_providers }}</div>
+    <div class="st-sub">N1</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">policy</i> SOC 2 Trust Services Criteria</h5></div>
+      <div class="surface-body p-0">
+        <ul class="list-unstyled mb-0">
+          {% set TSC = [
+            ('CC1', 'Control Environment', 'Single-tenant on-prem deployment with RBAC and audit log.'),
+            ('CC2', 'Communication & Information', 'Audit log + SIEM streaming (N3) for change visibility.'),
+            ('CC3', 'Risk Assessment', 'Annual review + DPDP DPIA template in docs/.'),
+            ('CC4', 'Monitoring Activities', 'Drift / at-risk dashboards (N14), daily digests.'),
+            ('CC5', 'Control Activities', 'Approval workflows (N12); four-eye admin invites.'),
+            ('CC6', 'Logical Access', 'SSO via IdP (N1); MFA delegated to IdP; no shared admin.'),
+            ('CC7', 'System Operations', 'Encrypted backup to BYO destination; runbook in /backup.'),
+            ('CC8', 'Change Management', 'Versioned releases; settings.write audited.'),
+            ('CC9', 'Risk Mitigation', 'AES-256 templates at rest; BYO-KMS (N7).'),
+          ] %}
+          {% for code, name, detail in TSC %}
+          <li class="d-flex gap-3 px-3 py-2" style="border-bottom: 1px solid var(--surface-line);">
+            <span class="id-badge" style="min-width:42px;text-align:center;">{{ code }}</span>
+            <div><strong>{{ name }}</strong><div class="text-muted small">{{ detail }}</div></div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">workspaces</i> ISO 27001 Annex A</h5></div>
+      <div class="surface-body p-0">
+        <ul class="list-unstyled mb-0">
+          {% set ANN = [
+            ('A.5',  'InfoSec policies',      'Provided in /docs/'),
+            ('A.8',  'Asset management',      'Persons + branches inventory in app.'),
+            ('A.9',  'Access control',        'RBAC (admin/hr/teacher/staff).'),
+            ('A.10', 'Cryptography',          'AES-256-GCM at rest; TLS 1.2+ in transit.'),
+            ('A.12', 'Operations security',   'SIEM streaming + tiered retention.'),
+            ('A.16', 'Incident management',   'Audit + SIEM alerting.'),
+            ('A.18', 'Compliance',            'DPDP/GDPR consent + right-to-erasure.'),
+          ] %}
+          {% for code, name, detail in ANN %}
+          <li class="d-flex gap-3 px-3 py-2" style="border-bottom: 1px solid var(--surface-line);">
+            <span class="id-badge" style="min-width:42px;text-align:center;">{{ code }}</span>
+            <div><strong>{{ name }}</strong><div class="text-muted small">{{ detail }}</div></div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card surface mt-3">
+  <div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">device_hub</i> Data flow diagrams (sentences the CISO copies)</h5></div>
+  <div class="surface-body">
+    <ul class="capsule-list">
+      <li><span class="cl-label">Attendance</span><span class="cl-val">Camera → FaceMark (on-prem) → SQLite (on-prem) → SIEM (optional egress)</span></li>
+      <li><span class="cl-label">Mobile</span><span class="cl-val">PWA → /api/gps/check_in (TLS) → DB</span></li>
+      <li><span class="cl-label">SSO</span><span class="cl-val">IdP (Okta/Entra/Google) → /enterprise/sso/<id>/callback → DB</span></li>
+      <li><span class="cl-label">Notifications</span><span class="cl-val">DB → SMTP / SMS / WhatsApp gateways (controlled egress)</span></li>
+      <li><span class="cl-label">Backup</span><span class="cl-val">DB + face crops → AES-256 (BYO-KMS) → operator-owned bucket / NAS</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="card surface mt-3">
+  <div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">timer</i> Tiered retention</h5></div>
+  <div class="surface-body">
+    <div class="row g-3">
+      {% for cat, days in facts.retention_days.items() %}
+      <div class="col-md-3">
+        <div class="stat-tile">
+          <div class="st-label">{{ cat }}</div>
+          <div class="st-value">{{ days }}<small>d</small></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block page_title %}Admins · RBAC{% endblock %}
+{% block page_sub %}admin > hr > teacher > staff{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">manage_accounts</i></div>
+  <div class="ph-body">
+    <h5>{{ admins|length }} admin{{ '' if admins|length == 1 else 's' }} configured</h5>
+    <p><strong>admin</strong> sees everything · <strong>hr</strong> runs branches/shifts/leaves/payroll/privacy
+       · <strong>teacher</strong> runs subjects/sessions/timetable/at-risk · <strong>staff</strong>
+       sees only their own data via the portal.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">groups</i> All admins</h5>
+        <span class="chip ghost">{{ admins|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Username</th><th>Role</th><th>Email</th><th>Branch</th><th></th></tr></thead>
+          <tbody>
+            {% for a in admins %}
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <span class="avatar">{{ a.username[0] | upper }}</span>
+                  <div>
+                    <strong>{{ a.username }}</strong>
+                    {% if a.username == admin_user %}<span class="badge-soft badge ms-1">you</span>{% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if a.role == 'admin' %}<span class="status-chip warn"><span class="dot"></span> admin</span>
+                {% elif a.role == 'hr' %}<span class="status-chip success"><span class="dot"></span> hr</span>
+                {% else %}<span class="chip">{{ a.role }}</span>{% endif %}
+              </td>
+              <td><span class="mono">{{ a.email or '—' }}</span></td>
+              <td>{% if a.branch_id %}<span class="chip ghost">#{{ a.branch_id }}</span>{% else %}—{% endif %}</td>
+              <td class="text-end">
+                {% if a.username != admin_user %}
+                <form method="POST" class="d-inline" onsubmit="return confirm('Delete this admin?')">
+                  <input type="hidden" name="delete" value="{{ a.id }}">
+                  <button class="btn btn-sm btn-danger-soft">Delete</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">person_add</i> Invite admin</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Username</label><input name="username" class="form-control" required></div>
+          <div class="fld"><label>Password</label><input name="password" type="password" class="form-control" required></div>
+          <div class="fld"><label>Email <span class="hint">(receives digests)</span></label><input name="email" type="email" class="form-control"></div>
+          <div class="fld">
+            <label>Role</label>
+            <select name="role" class="form-select">
+              {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Branch</label>
+            <select name="branch_id" class="form-select">
+              <option value="">All branches</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">person_add</i> Create
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

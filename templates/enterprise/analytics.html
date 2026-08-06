@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · Analytics{% endblock %}
+{% block page_title %}Workforce analytics (N14){% endblock %}
+{% block page_sub %}Attrition risk · burnout signals · occupancy trend{% endblock %}
+{% block content %}
+<div class="page-hero hero-emerald">
+  <div class="ph-icn"><i class="material-icons">monitoring</i></div>
+  <div class="ph-body">
+    <h5>Turns attendance into management decisions</h5>
+    <p>The value HR leaders pay UKG/Rippling for — at a fraction of the cost.</p>
+  </div>
+</div>
+
+<div class="stat-strip">
+  <div class="stat-tile danger">
+    <div class="st-label">High-risk persons</div>
+    <div class="st-value">{{ attrition | selectattr('band','equalto','high') | list | length }}</div>
+  </div>
+  <div class="stat-tile warn">
+    <div class="st-label">Watch list</div>
+    <div class="st-value">{{ attrition | selectattr('band','equalto','watch') | list | length }}</div>
+  </div>
+  <div class="stat-tile accent">
+    <div class="st-label">Burnout signals</div>
+    <div class="st-value">{{ burnout|length }}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="st-label">Days tracked</div>
+    <div class="st-value">{{ trend|length }}</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#ef4444">trending_down</i> Attrition risk (90-day)</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0 table-density-tight">
+          <thead><tr><th>Person</th><th>Band</th><th>Score</th><th>Late</th><th>Absent</th><th>Volatility</th></tr></thead>
+          <tbody>
+            {% for r in attrition[:20] %}
+            <tr>
+              <td><strong>{{ r.name }}</strong><div class="mono small">#{{ r.person_id }}</div></td>
+              <td>{% if r.band == 'high' %}<span class="status-chip danger"><span class="dot"></span> high</span>{% elif r.band == 'watch' %}<span class="status-chip warn"><span class="dot"></span> watch</span>{% else %}<span class="status-chip success"><span class="dot"></span> low</span>{% endif %}</td>
+              <td><span class="mono">{{ r.score }}</span></td>
+              <td>{{ r.late_days }}</td>
+              <td>{{ r.absent_days }}</td>
+              <td><span class="mono">{{ r.volatility }}</span></td>
+            </tr>
+            {% else %}<tr><td colspan="6" class="text-center text-muted py-4">Need at least 14 days of data per person.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#f59e0b">local_fire_department</i> Burnout signals (30-day)</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0 table-density-tight">
+          <thead><tr><th>Person</th><th>OT hours</th><th>OT days</th><th>Avg / day</th></tr></thead>
+          <tbody>
+            {% for b in burnout %}
+            <tr>
+              <td><strong>{{ b.name }}</strong><div class="mono small">#{{ b.person_id }}</div></td>
+              <td><span class="mono">{{ b.overtime_hours }}</span></td>
+              <td><span class="mono">{{ b.overtime_days }}</span></td>
+              <td><span class="mono">{{ b.avg_per_day }}</span></td>
+            </tr>
+            {% else %}<tr><td colspan="4" class="text-center text-muted py-4">No burnout signals — healthy schedules.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

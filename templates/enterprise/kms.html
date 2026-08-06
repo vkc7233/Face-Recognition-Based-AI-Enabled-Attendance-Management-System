@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · BYO-KMS{% endblock %}
+{% block page_title %}Bring-Your-Own KMS (N7){% endblock %}
+{% block page_sub %}"Even our vendor cannot read our faces."{% endblock %}
+{% block content %}
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">key_off</i></div>
+  <div class="ph-body">
+    <h5>Wrap the data-encryption key with the customer's KEK</h5>
+    <p>Supported: AWS KMS · Google Cloud KMS · Azure Key Vault · HashiCorp Vault Transit · file-based static.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Configured keys</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Label</th><th>Kind</th><th>Key reference</th><th>Rotated</th><th></th></tr></thead>
+          <tbody>
+            {% for k in keys %}
+            <tr>
+              <td><strong>{{ k.label }}</strong></td>
+              <td><span class="badge-soft badge">{{ k.kms_kind }}</span></td>
+              <td><span class="url-chip">{{ k.key_ref[:40] }}</span></td>
+              <td><span class="mono small">{{ k.rotated_at or '—' }}</span></td>
+              <td class="text-end"><form method="POST" class="d-inline"><input type="hidden" name="delete" value="{{ k.id }}"><button class="btn btn-sm btn-danger-soft">×</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="5"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">key</i></div><strong>No customer keys yet</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Add KMS key</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Label</label><input name="label" class="form-control" required></div>
+          <div class="fld"><label>KMS kind</label>
+            <select name="kms_kind" class="form-select">
+              <option value="aws">AWS KMS</option>
+              <option value="gcp">Google Cloud KMS</option>
+              <option value="azure">Azure Key Vault</option>
+              <option value="hashicorp">HashiCorp Vault Transit</option>
+              <option value="static">Static / file-based</option>
+            </select>
+          </div>
+          <div class="fld"><label>Key reference (ARN / URI / path)</label><input name="key_ref" class="form-control" required></div>
+          <button class="btn btn-primary w-100">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

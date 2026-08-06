@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Analytics · {{ org_name }}{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block page_sub %}Trends, top attenders, and on-time rate.{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <form method="GET" class="d-flex gap-2">
+    <select name="days" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="7"  {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+      <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+      <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+    </select>
+  </form>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">stacked_line_chart</i> Attendance trend</h5>
+        <span class="chip">{{ days }} days</span>
+      </div>
+      <div class="surface-body">
+        <canvas id="trendChart" height="120"></canvas>
+      </div>
+    </div>
+
+    <div class="card surface mt-4">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">bar_chart</i> Late vs. on-time</h5>
+      </div>
+      <div class="surface-body">
+        <canvas id="lateChart" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">emoji_events</i> Top attenders</h5>
+        <span class="chip">30 days</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table table-clean mb-0">
+          <thead><tr><th>#</th><th>Name</th><th class="text-end">Days</th></tr></thead>
+          <tbody>
+            {% for r in top %}
+              <tr>
+                <td class="muted-num">{{ '%02d' % loop.index }}</td>
+                <td>
+                  <div class="user-cell">
+                    <span class="avatar">{{ r.name[:1] | upper }}</span>
+                    <span>{{ r.name }}</span>
+                  </div>
+                </td>
+                <td class="text-end"><span class="chip">{{ r.days_present }}</span></td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="empty">
+                <i class="material-icons-outlined">leaderboard</i>
+                <span>Not enough data yet.</span>
+              </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card surface mt-4 promo">
+      <div class="surface-body">
+        <h6 class="d-flex align-items-center gap-2"><i class="material-icons">verified</i> Trusted recognition</h6>
+        <p class="small mb-0">Unknown faces are rejected automatically using the configurable distance threshold in Settings — no false attendance.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script nonce="{{ csp_nonce() }}">
+  const data = {{ summary.rows | tojson }};
+  const labels = data.map(d => d.date);
+  const totals = data.map(d => d.total);
+  const lates  = data.map(d => d.late || 0);
+  const ontime = data.map((d,i) => (d.total - (d.late||0)));
+
+  const baseOpts = {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#475569' } } },
+    scales: {
+      x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      y: { beginAtZero: true, ticks: { color: '#94a3b8', precision: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } }
+    }
+  };
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Present',
+        data: totals,
+        tension: 0.35,
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.18)',
+        fill: true, pointRadius: 4, pointBackgroundColor: '#6366f1'
+      }]
+    },
+    options: baseOpts
+  });
+
+  new Chart(document.getElementById('lateChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'On time', data: ontime, backgroundColor: '#10b981', borderRadius: 6, stack: 's' },
+        { label: 'Late',    data: lates,  backgroundColor: '#f59e0b', borderRadius: 6, stack: 's' }
+      ]
+    },
+    options: { ...baseOpts, scales: { ...baseOpts.scales, x: { ...baseOpts.scales.x, stacked: true }, y: { ...baseOpts.scales.y, stacked: true } } }
+  });
+</script>
+{% endblock %}

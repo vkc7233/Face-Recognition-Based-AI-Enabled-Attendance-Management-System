@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · Deepfake events{% endblock %}
+{% block page_title %}Deepfake & injection-attack events (N5){% endblock %}
+{% block page_sub %}Virtual cameras · replays · AI face-swaps detected at the kiosk{% endblock %}
+{% block content %}
+<div class="page-hero hero-rose">
+  <div class="ph-icn"><i class="material-icons">no_photography</i></div>
+  <div class="ph-body">
+    <h5>{{ events|length }} event{{ '' if events|length == 1 else 's' }} on file</h5>
+    <p>This is the fastest-growing 2026 spoofing vector that the big HR suites still ignore.</p>
+  </div>
+</div>
+<div class="card surface">
+  <div class="surface-head"><h5 class="m-0">Recent</h5><span class="chip ghost">{{ events|length }}</span></div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>When</th><th>Kind</th><th>Person</th><th>Score</th><th>Detail</th></tr></thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td><span class="mono small">{{ e.seen_at }}</span></td>
+          <td><span class="status-chip danger"><span class="dot"></span> {{ e.kind }}</span></td>
+          <td>{{ e.person_name or '—' }}</td>
+          <td><span class="mono">{{ '%.2f'|format(e.score or 0) }}</span></td>
+          <td><small class="text-muted">{{ e.detail or '' }}</small></td>
+        </tr>
+        {% else %}<tr><td colspan="5"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">verified</i></div><strong>No spoofs detected — clean kiosk</strong></div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

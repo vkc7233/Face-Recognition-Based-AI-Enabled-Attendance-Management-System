@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · White-label{% endblock %}
+{% block page_title %}White-label / reseller portal (N18){% endblock %}
+{% block page_sub %}Rebrand the UI and let MSPs resell FaceMark as their own product{% endblock %}
+{% block content %}
+<div class="page-hero hero-rose">
+  <div class="ph-icn"><i class="material-icons">palette</i></div>
+  <div class="ph-body"><h5>Directly serves "sell it as our product everywhere"</h5></div>
+</div>
+<div class="card surface">
+  <div class="surface-head"><h5 class="m-0">Brand per tenant</h5></div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>Tenant</th><th>Brand colour</th><th>Logo</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for t in tenants %}
+        <tr>
+          <td><strong>{{ t.name }}</strong></td>
+          <td>
+            <span class="d-inline-flex align-items-center gap-2">
+              <span style="width:18px;height:18px;border-radius:4px;border:1px solid #e2e8f0;background:{{ t.brand_color or '#6366f1' }};"></span>
+              <span class="mono small">{{ t.brand_color or '—' }}</span>
+            </span>
+          </td>
+          <td>{% if t.brand_logo %}<span class="url-chip">{{ t.brand_logo[:32] }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td>
+            <form method="POST" class="row g-2 align-items-center">
+              <input type="hidden" name="tenant_id" value="{{ t.id }}">
+              <div class="col-auto"><input name="brand_color" type="color" value="{{ t.brand_color or '#6366f1' }}" style="width:40px; height:32px; border-radius:6px; border:1px solid #e2e8f0;"></div>
+              <div class="col-auto"><input name="brand_logo" class="form-control form-control-sm" placeholder="logo URL" value="{{ t.brand_logo or '' }}"></div>
+              <div class="col-auto"><input name="name" class="form-control form-control-sm" placeholder="Display name" value="{{ t.name }}"></div>
+              <div class="col-auto"><button class="btn btn-sm btn-soft-primary"><i class="material-icons md-16">save</i></button></div>
+            </form>
+          </td>
+        </tr>
+        {% else %}<tr><td colspan="4"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">palette</i></div><strong>No tenants — create one in /enterprise/tenants first</strong></div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

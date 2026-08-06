@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · SCIM{% endblock %}
+{% block page_title %}SCIM clients (N2){% endblock %}
+{% block page_sub %}Automated user provisioning from your IdP{% endblock %}
+{% block content %}
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">sync_alt</i></div>
+  <div class="ph-body">
+    <h5>Endpoint: <code>{{ url_for('scim_v2.users_list', _external=True) }}</code></h5>
+    <p>Paste this URL + the bearer token into your IdP's SCIM provisioning connector.</p>
+  </div>
+</div>
+
+{% if new_token %}
+<div class="alert" style="background:#fffbeb;color:#92400e;">
+  <i class="material-icons-outlined">warning</i>
+  <div>
+    New bearer token (copy now): <code class="user-select-all">{{ new_token }}</code>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Clients</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Last seen</th><th>Created</th><th></th></tr></thead>
+          <tbody>
+            {% for c in clients %}
+            <tr>
+              <td><strong>{{ c.name }}</strong></td>
+              <td><span class="mono">{{ c.last_seen or '—' }}</span></td>
+              <td><span class="mono">{{ c.created_at[:10] }}</span></td>
+              <td class="text-end">
+                <form method="POST" class="d-inline"><input type="hidden" name="delete" value="{{ c.id }}"><button class="btn btn-sm btn-danger-soft">Revoke</button></form>
+              </td>
+            </tr>
+            {% else %}<tr><td colspan="4"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">api</i></div><strong>No SCIM clients</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Create client</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Name</label><input name="name" class="form-control" placeholder="Okta production" required></div>
+          <button class="btn btn-primary w-100"><i class="material-icons md-16">vpn_key</i> Generate token</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

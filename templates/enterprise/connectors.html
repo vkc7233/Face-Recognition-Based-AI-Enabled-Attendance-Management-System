@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · HRMS Connectors{% endblock %}
+{% block page_title %}HRMS / payroll connectors (N15){% endblock %}
+{% block page_sub %}One-click sync to SAP SF · Workday · ADP · BambooHR · Zoho · Keka · greytHR · Zapier{% endblock %}
+{% block content %}
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">share</i></div>
+  <div class="ph-body"><h5>Kills "it won't integrate with our payroll" — on the spot</h5></div>
+  <div class="ph-actions">
+    <form method="POST" class="d-inline"><button name="sync" value="1" class="btn btn-primary"><i class="material-icons md-16">sync</i> Sync all now</button></form>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Configured</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Kind</th><th>Endpoint</th><th>Last sync</th><th></th></tr></thead>
+          <tbody>
+            {% for c in connectors %}
+            <tr>
+              <td><strong>{{ c.name }}</strong></td>
+              <td><span class="badge-soft badge">{{ c.kind }}</span></td>
+              <td><span class="url-chip">{{ (c.endpoint or '')[:40] }}</span></td>
+              <td>
+                {% if c.last_status == 'ok' %}<span class="status-chip success"><span class="dot"></span> {{ c.last_sync }}</span>
+                {% elif c.last_status %}<span class="status-chip danger"><span class="dot"></span> {{ c.last_status[:30] }}</span>
+                {% else %}<span class="text-muted small">never</span>{% endif %}
+              </td>
+              <td class="text-end"><form method="POST" class="d-inline"><input type="hidden" name="delete" value="{{ c.id }}"><button class="btn btn-sm btn-danger-soft">×</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="5"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">link_off</i></div><strong>No connectors yet</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Add connector</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Kind</label>
+            <select name="kind" class="form-select">
+              {% for k in ['sap_sf','workday','adp','bamboo','zoho_people','keka','greythr','zapier','make'] %}
+              <option value="{{ k }}">{{ k }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fld"><label>Name</label><input name="name" class="form-control" required></div>
+          <div class="fld"><label>Endpoint URL</label><input name="endpoint" class="form-control" placeholder="https://..."></div>
+          <div class="fld"><label>API key / bearer</label><input name="api_key" type="password" class="form-control"></div>
+          <button class="btn btn-primary w-100">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Subjects · {{ org_name }}{% endblock %}
+{% block page_title %}Subjects{% endblock %}
+{% block page_sub %}Courses / papers taught at your institution.{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">menu_book</i>
+          <h5 class="m-0">All subjects</h5>
+          <span class="chip">{{ subjects | length }}</span>
+        </div>
+      </div>
+      <div class="surface-body p-0">
+        <div class="table-responsive">
+          <table class="table table-clean mb-0">
+            <thead>
+              <tr><th style="width:60px">#</th><th>Code</th><th>Subject</th><th>Class / Department</th><th class="text-end">Actions</th></tr>
+            </thead>
+            <tbody>
+              {% if subjects %}
+                {% for s in subjects %}
+                  <tr>
+                    <td class="muted-num">{{ '%02d' % loop.index }}</td>
+                    <td><span class="badge id-badge">{{ s.code or '—' }}</span></td>
+                    <td><b>{{ s.name }}</b></td>
+                    <td><span class="dept-chip">{{ s.department_name or '—' }}</span></td>
+                    <td class="text-end">
+                      <form method="POST" class="d-inline" onsubmit="return confirm('Delete {{ s.name }}? All sessions for this subject will be removed too.')">
+                        <input type="hidden" name="delete" value="{{ s.id }}">
+                        <button class="btn btn-danger-soft btn-sm">
+                          <i class="material-icons md-16">delete_outline</i>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" class="empty">
+                  <i class="material-icons-outlined">menu_book</i>
+                  <span>No subjects yet — add one on the right.</span>
+                </td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_box</i> Add subject</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST" class="vstack gap-3">
+          <div>
+            <label class="form-label">Subject name</label>
+            <input class="form-control" name="name" placeholder="e.g. Data Structures" required>
+          </div>
+          <div>
+            <label class="form-label">Code (optional)</label>
+            <input class="form-control" name="code" placeholder="e.g. CS101">
+          </div>
+          <div>
+            <label class="form-label">Class / Department</label>
+            <select class="form-select" name="department_id">
+              <option value="">— Any —</option>
+              {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary">
+            <i class="material-icons md-18">save</i> Add subject
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

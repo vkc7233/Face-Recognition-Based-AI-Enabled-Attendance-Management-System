@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise Edition · Pricing{% endblock %}
+{% block page_title %}Pricing & Editions{% endblock %}
+{% block page_sub %}One product, four editions — same install scales from 50 to 5,000 seats{% endblock %}
+{% block content %}
+
+<div class="page-stripe"></div>
+
+<div class="page-hero hero-emerald">
+  <div class="ph-icn"><i class="material-icons">savings</i></div>
+  <div class="ph-body">
+    <h5>Lead with the wedge</h5>
+    <p>
+      Per-employee/month for cloud-style deals; <strong>perpetual on-prem licence + AMC</strong>
+      for security-conscious or PSU buyers — the on-prem option is itself a differentiator.
+      Always quote a one-time implementation & enrolment fee separately to protect margin.
+    </p>
+  </div>
+</div>
+
+{% set TIERS = [
+  {
+    'name':'Starter', 'tag':'Single office, <100 staff',
+    'price':'Per-device perpetual + low AMC',
+    'or':'or entry tier ₹/emp/mo',
+    'theme':'slate',
+    'features':[
+      'Core face attendance + crowd voting',
+      'Kiosk + big-screen + visitor log',
+      'CSV / Excel reports',
+      '1 admin login',
+      'Email support · best-effort',
+    ],
+    'note':'Built to beat the cheap biometric machine on first price.'
+  },
+  {
+    'name':'Professional', 'tag':'Growing companies, multi-dept',
+    'price':'₹/emp/month, annual commit',
+    'or':'',
+    'theme':'sky',
+    'features':[
+      '+ N1 SSO (Okta / Entra / Google)',
+      '+ N9 Teams / Slack check-in bot',
+      '+ N11 Self-service portal',
+      '+ N12 Approval workflows',
+      '+ N14 Workforce analytics',
+      '+ Per-shift late & overtime',
+      'Email + business-hours chat',
+    ],
+    'note':'Most common SaaS deal shape.'
+  },
+  {
+    'name':'Enterprise', 'tag':'IT firms & large corporates', 'featured': True,
+    'price':'₹/emp/month volume tiers',
+    'or':'or on-prem licence + AMC',
+    'theme':'violet',
+    'features':[
+      '+ N2 SCIM auto-provisioning',
+      '+ N3 SIEM streaming + tiered audit',
+      '+ N4 SOC2 / ISO 27001 evidence pack',
+      '+ N5 Deepfake & injection liveness',
+      '+ N6 Tailgating + anti-passback',
+      '+ N7 BYO-KMS template encryption',
+      '+ N13 AI Workforce Copilot',
+      '+ N15 HRMS / payroll connectors',
+      '+ N17 Multi-tenant control plane',
+      '24×7 priority support',
+    ],
+    'note':'Built to clear CIO, CISO and CHRO at the same time.'
+  },
+  {
+    'name':'MSP / White-Label', 'tag':'Resellers & system integrators',
+    'price':'Wholesale per-seat + revenue share',
+    'or':'',
+    'theme':'rose',
+    'features':[
+      '+ N18 White-label + partner portal',
+      '+ N19 Face-auth SDK / widget',
+      '+ Multi-client control plane',
+      'Co-marketing toolkit',
+      'Named partner success manager',
+    ],
+    'note':'Sells FaceMark as the partner\'s own product.'
+  },
+] %}
+
+<div class="row g-3">
+  {% for t in TIERS %}
+  <div class="col-lg-3 col-md-6">
+    <div class="card surface lift h-100"
+         {% if t.featured %}style="border-color: rgba(99,102,241,0.5); box-shadow: 0 18px 40px -16px rgba(99,102,241,0.32);"{% endif %}>
+      {% if t.featured %}
+      <div style="height:4px;background:linear-gradient(90deg,#6366f1,#a855f7,#ec4899);"></div>
+      {% endif %}
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start">
+          <h4 class="mb-1" style="font-weight:800;letter-spacing:-0.02em;">{{ t.name }}</h4>
+          {% if t.featured %}<span class="badge-soft badge">most popular</span>{% endif %}
+        </div>
+        <small class="text-muted">{{ t.tag }}</small>
+        <hr>
+        <div class="mb-1" style="font-size:1.05rem; font-weight:700;">{{ t.price }}</div>
+        {% if t.or %}<div class="text-muted small mb-2">{{ t.or }}</div>{% endif %}
+        <ul class="checklist mt-3">
+          {% for f in t.features %}
+          <li><i class="material-icons-outlined" style="font-size:18px;">check_circle</i> {{ f }}</li>
+          {% endfor %}
+        </ul>
+        <div class="alert alert-info mt-3" style="background:#eef2ff;color:#3730a3;font-size:0.82rem;">
+          <i class="material-icons-outlined">lightbulb</i> <span>{{ t.note }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card surface mt-4">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">attach_money</i> Add-ons (separate quote)</h5>
+  </div>
+  <div class="surface-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="stat-tile accent">
+          <div class="st-label">Implementation</div>
+          <div class="st-value">One-time</div>
+          <div class="st-sub">Install, branding, IdP setup</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-tile">
+          <div class="st-label">Face enrolment</div>
+          <div class="st-value">Per head</div>
+          <div class="st-sub">Bulk capture day(s)</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-tile success">
+          <div class="st-label">Edge appliance</div>
+          <div class="st-value">Per gate</div>
+          <div class="st-sub">Hardware + 1-yr warranty</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-tile warn">
+          <div class="st-label">AMC (on-prem)</div>
+          <div class="st-value">15–22%</div>
+          <div class="st-sub">of perpetual licence p.a.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="text-muted small text-center mt-4">
+  Indicative tiers only — your sales engineer should validate seat-count, branch-count and
+  data-residency requirements before quoting.
+</p>
+
+{% endblock %}

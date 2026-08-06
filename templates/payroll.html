@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block page_title %}Payroll{% endblock %}
+{% block page_sub %}Hours, late & overtime — exportable to your payroll system{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-emerald">
+  <div class="ph-icn"><i class="material-icons">payments</i></div>
+  <div class="ph-body">
+    <h5>{{ rows|length }} people in this run</h5>
+    <p>Excludes holidays and approved leave. Overtime is hours worked above 8.
+       Export to CSV or Excel; the JSON shape is identical for API consumers.</p>
+  </div>
+  <div class="ph-actions">
+    <a class="btn btn-ghost" href="{{ url_for('payroll_export', start=start, end=end, fmt='csv') }}">
+      <i class="material-icons md-16">file_download</i> CSV
+    </a>
+    <a class="btn btn-primary" href="{{ url_for('payroll_export', start=start, end=end, fmt='xlsx') }}">
+      <i class="material-icons md-16">grid_on</i> Excel
+    </a>
+  </div>
+</div>
+
+<form class="filter-bar" method="GET">
+  <span class="text-muted small fw-semibold">FROM</span>
+  <input type="date" name="start" value="{{ start }}" class="form-control">
+  <span class="text-muted small fw-semibold">TO</span>
+  <input type="date" name="end" value="{{ end }}" class="form-control">
+  <button class="btn btn-primary">Refresh</button>
+  <span class="spacer"></span>
+  <span class="chip ghost">{{ rows|length }} people</span>
+</form>
+
+<div class="card surface">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">analytics</i> Per-person summary</h5>
+  </div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>ID</th><th>Name</th><th>Dept</th>
+          <th class="text-center">Present</th>
+          <th class="text-center">Late</th>
+          <th class="text-center">Absent</th>
+          <th class="text-center">On leave</th>
+          <th class="text-end">Worked (h)</th>
+          <th class="text-end">Overtime (h)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><span class="id-badge">{{ r.person_id }}</span></td>
+          <td><strong>{{ r.name }}</strong></td>
+          <td>{{ r.department or '—' }}</td>
+          <td class="text-center"><span class="status-chip success"><span class="dot"></span> {{ r.present }}</span></td>
+          <td class="text-center">{% if r.late %}<span class="status-chip warn"><span class="dot"></span> {{ r.late }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+          <td class="text-center">{% if r.absent %}<span class="status-chip danger"><span class="dot"></span> {{ r.absent }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+          <td class="text-center">{{ r.on_leave }}</td>
+          <td class="text-end mono">{{ r.worked_hours }}</td>
+          <td class="text-end"><strong class="mono">{{ r.overtime_hours }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

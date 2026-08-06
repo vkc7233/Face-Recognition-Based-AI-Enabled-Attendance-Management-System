@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}CCTV wall - {{ org_name }}{% endblock %}
+{% block page_title %}CCTV wall{% endblock %}
+{% block page_sub %}NVR {{ host }} - {{ channels|length }} live channels{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+    <i class="material-icons-outlined" style="font-size:16px;vertical-align:-3px">refresh</i>
+    Reconnect all
+  </button>
+</div>
+
+<div class="row g-3">
+  {% for ch in channels %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <span class="fw-semibold">Camera {{ ch }}</span>
+        <span class="badge bg-success-subtle text-success-emphasis">live</span>
+      </div>
+      <div class="ratio ratio-16x9 bg-dark">
+        <img src="{{ url_for('cctv.cctv_feed', ch=ch) }}"
+             alt="Camera {{ ch }} feed"
+             style="object-fit: cover; width: 100%; height: 100%;"
+             onerror="this.src='{{ url_for('static', filename='profiles/_default.png') }}'">
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<p class="text-muted small mt-3 mb-0">
+  Tip: this view uses the sub-stream of each camera (lower-res) so the grid stays smooth.
+  The face-recognition pipeline uses the camera configured under
+  <a href="{{ url_for('settings') }}">Settings &rarr; Camera URL</a>, independent of this wall.
+</p>
+{% endblock %}

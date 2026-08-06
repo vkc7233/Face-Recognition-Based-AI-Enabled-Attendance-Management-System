@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block page_title %}Daily muster roll{% endblock %}
+{% block page_sub %}Site labour edition — hours, contractor, wages{% endblock %}
+{% block content %}
+
+{% set total_amount = rows | map(attribute='amount') | sum %}
+{% set total_hours  = rows | map(attribute='hours')  | sum %}
+
+<div class="page-hero hero-amber">
+  <div class="ph-icn"><i class="material-icons">construction</i></div>
+  <div class="ph-body">
+    <h5>{{ rows|length }} worker entries · ₹{{ '{:,.0f}'.format(total_amount) }} payable</h5>
+    <p>Per-day muster, keyed by worker × contractor × site, with auto wage calc
+       (hours × hourly rate; overtime at 1.5×).</p>
+  </div>
+</div>
+
+<form class="filter-bar" method="GET">
+  <span class="text-muted small fw-semibold">DATE</span>
+  <input type="date" name="date" class="form-control" value="{{ date }}">
+  <span class="text-muted small fw-semibold">BRANCH</span>
+  <select name="branch_id" class="form-select">
+    <option value="">All branches</option>
+    {% for b in branches %}
+    <option value="{{ b.id }}" {% if b.id == branch_id %}selected{% endif %}>{{ b.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-primary">Show</button>
+  <span class="spacer"></span>
+  <span class="chip ghost">{{ rows|length }} entries</span>
+</form>
+
+<div class="stat-strip">
+  <div class="stat-tile success">
+    <div class="st-label">Total payable</div>
+    <div class="st-value">₹{{ '{:,.0f}'.format(total_amount) }}</div>
+  </div>
+  <div class="stat-tile accent">
+    <div class="st-label">Total hours</div>
+    <div class="st-value">{{ '{:,.1f}'.format(total_hours) }}</div>
+  </div>
+  <div class="stat-tile warn">
+    <div class="st-label">Overtime h</div>
+    <div class="st-value">{{ '{:,.1f}'.format(rows | map(attribute='overtime_hr') | sum) }}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="st-label">Workers on roll</div>
+    <div class="st-value">{{ rows|length }}</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">people</i> Muster — {{ date }}</h5>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>Worker</th><th>Contractor</th>
+              <th class="text-end">Hours</th>
+              <th class="text-end">OT</th>
+              <th class="text-end">Rate</th>
+              <th class="text-end">Payable</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td>
+                <strong>{{ r.person_name }}</strong>
+                <div class="mono">#{{ r.person_id }}</div>
+              </td>
+              <td>
+                {% if r.contractor_name %}<span class="chip">{{ r.contractor_name }}</span>
+                {% else %}<span class="dept-chip">Direct</span>{% endif %}
+              </td>
+              <td class="text-end mono">{{ r.hours }}</td>
+              <td class="text-end mono">{{ r.overtime_hr }}</td>
+              <td class="text-end mono">₹{{ r.daily_rate }}</td>
+              <td class="text-end"><strong class="mono">₹{{ r.amount }}</strong></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">
+              <div class="empty">
+                <i class="material-icons-outlined">person_search</i>
+                <strong>No muster entries for this day</strong>
+                <div>Add one on the right.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">post_add</i> Add / update entry</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld">
+            <label>Worker</label>
+            <select name="person_id" class="form-select" required>
+              <option value="">—</option>
+              {% for p in persons %}
+              <option value="{{ p.person_id }}">{{ p.name }} (#{{ p.person_id }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Contractor</label>
+            <select name="contractor_id" class="form-select">
+              <option value="">Direct hire</option>
+              {% for c in contractors %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label">Hours</label>
+              <input name="hours" type="number" step="0.25" value="8" class="form-control">
+            </div>
+            <div class="col">
+              <label class="form-label">OT hours</label>
+              <input name="overtime_hr" type="number" step="0.25" value="0" class="form-control">
+            </div>
+          </div>
+          <div class="fld">
+            <label>Daily rate ₹</label>
+            <input name="daily_rate" type="number" step="any" value="0" class="form-control">
+          </div>
+          <div class="fld">
+            <label>Note</label>
+            <input name="note" class="form-control" placeholder="Gate / foreman / etc.">
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">save</i> Save entry
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

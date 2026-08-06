@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · {{ org_name }}{% endblock %}
+{% block page_title %}Welcome back{% endblock %}
+{% block page_sub %}Live face recognition, check-in / check-out, enrollment.{% endblock %}
+
+{% block content %}
+
+{% if insights %}
+<div class="insights-strip mb-4">
+  {% for x in insights[:6] %}
+    <a class="insight insight-{{ x.kind }}" href="{{ x.href }}">
+      <i class="material-icons">{{ x.icon }}</i>
+      <span class="insight-title">{{ x.title }}</span>
+      <span class="insight-cta">{{ x.cta }} →</span>
+    </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if active_session %}
+<div class="active-session-banner mb-4">
+  <div class="asb-pulse"></div>
+  <div class="asb-body">
+    <div class="asb-label">Active session — recognised attendance will be added here</div>
+    <div class="asb-title">
+      <b>{{ active_session.subject_name }}</b>
+      {% if active_session.subject_code %}<span class="badge id-badge ms-1">{{ active_session.subject_code }}</span>{% endif %}
+      <span class="ms-2 small">{{ active_session.start_time }} – {{ active_session.end_time }} · {{ active_session.department_name or 'all classes' }}</span>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('session_detail', sid=active_session.id) }}" class="btn btn-ghost btn-sm">
+      <i class="material-icons md-16">visibility</i> View
+    </a>
+    <form method="POST" action="{{ url_for('set_active_session') }}">
+      <input type="hidden" name="session_id" value="">
+      <button class="btn btn-danger-soft btn-sm">
+        <i class="material-icons md-16">stop_circle</i> End session
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if not model_trained %}
+<div class="onboard-banner mb-4">
+  <div class="ob-icon"><i class="material-icons">school</i></div>
+  <div class="ob-body">
+    <h6>No trained model yet</h6>
+    <p>Register at least one user — the system will capture ~{{ nimgs }} sharp face samples, augment them and train the recogniser ({{ recognizer_backend }}). Then <b>Start</b> becomes active.</p>
+  </div>
+  <div class="ob-cta">
+    <a href="#registerCard" class="btn btn-primary btn-sm">
+      <i class="material-icons md-16">person_add</i> Register first user
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-4 mb-4">
+  <div class="kpi kpi-indigo">
+    <div class="kpi-icn"><i class="material-icons">groups</i></div>
+    <div class="kpi-body">
+      <span class="kpi-label">Registered users</span>
+      <span class="kpi-value" data-count="{{ totalreg }}">0</span>
+    </div>
+  </div>
+  <div class="kpi kpi-emerald">
+    <div class="kpi-icn"><i class="material-icons">how_to_reg</i></div>
+    <div class="kpi-body">
+      <span class="kpi-label">Present today</span>
+      <span class="kpi-value" data-count="{{ present }}">0</span>
+    </div>
+  </div>
+  <div class="kpi kpi-amber">
+    <div class="kpi-icn"><i class="material-icons">schedule</i></div>
+    <div class="kpi-body">
+      <span class="kpi-label">Late today</span>
+      <span class="kpi-value" data-count="{{ rows | selectattr('is_late') | list | length }}">0</span>
+    </div>
+  </div>
+  <div class="kpi kpi-rose">
+    <div class="kpi-icn"><i class="material-icons">trending_up</i></div>
+    <div class="kpi-body">
+      <span class="kpi-label">Attendance rate</span>
+      <span class="kpi-value">{% if totalreg %}{{ ((present / totalreg) * 100) | round(0, 'floor') | int }}{% else %}0{% endif %}<small>%</small></span>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <div class="col-xl-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">videocam</i>
+          <h5 class="m-0">Live recognition</h5>
+          <span class="chip ghost">{{ recognizer_backend }}</span>
+          <span class="chip">Crowd mode</span>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="startBtn" class="btn btn-success btn-sm"
+            {% if not model_trained %}disabled title="Register a user first"{% endif %}>
+            <i class="material-icons md-16">play_arrow</i> Start
+          </button>
+          <button id="stopBtn" class="btn btn-ghost btn-sm" disabled>
+            <i class="material-icons md-16">stop</i> Stop
+          </button>
+        </div>
+      </div>
+      <div class="surface-body">
+        <div class="video-wrap">
+          <img id="videoStream" alt="">
+          <div id="videoOverlay" class="video-overlay">
+            <div class="vo-icon"><i class="material-icons">videocam_off</i></div>
+            <h6>Camera idle</h6>
+            <p>Click <b>Start</b> to recognise faces. <b>Crowd mode</b> processes every face in the frame, marks each one once it gains 3 hits in 2.5 s, and shows a green ✓ flash on screen so people know they're done.</p>
+          </div>
+          <div class="video-corner"><span class="rec-dot"></span> LIVE</div>
+        </div>
+        <div class="tip">
+          <i class="material-icons-outlined md-16">tips_and_updates</i>
+          Confidence number next to each name is the LBPH distance — lower = more certain. The cutoff is set in <a href="{{ url_for('settings') }}">Settings → Recognition</a>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4 d-flex flex-column gap-4" id="registerCard">
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">person_add</i>
+          <h5 class="m-0">Register a user</h5>
+        </div>
+      </div>
+      <div class="surface-body">
+        <form action="{{ url_for('add') }}" method="POST" class="vstack gap-3">
+          <div>
+            <label class="form-label">Full name</label>
+            <div class="input-with-icn">
+              <i class="material-icons-outlined">badge</i>
+              <input type="text" name="newusername" class="form-control" placeholder="e.g. Aisha Khan" required>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Roll No. / Employee ID</label>
+            <div class="input-with-icn">
+              <i class="material-icons-outlined">tag</i>
+              <input type="number" name="newuserid" class="form-control" placeholder="e.g. 1042" required>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Class / Department</label>
+            <select name="department_id" class="form-select">
+              <option value="">— None —</option>
+              {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Email (optional)</label>
+              <div class="input-with-icn">
+                <i class="material-icons-outlined">mail</i>
+                <input type="email" name="email" class="form-control" placeholder="student@college.edu">
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Guardian / parent email</label>
+              <div class="input-with-icn">
+                <i class="material-icons-outlined">supervisor_account</i>
+                <input type="email" name="guardian_email" class="form-control" placeholder="parent@home.com">
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Date of birth (for ID card & birthday wishes)</label>
+              <div class="input-with-icn">
+                <i class="material-icons-outlined">cake</i>
+                <input type="date" name="date_of_birth" class="form-control">
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="material-icons md-18">add_a_photo</i> Start capture
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">bolt</i>
+          <h5 class="m-0">Live feed</h5>
+        </div>
+      </div>
+      <div class="surface-body p-0">
+        <ul id="liveFeed" class="live-feed mb-0">
+          {% if recent %}
+            {% for r in recent %}
+              <li>
+                <img class="feed-thumb" src="{{ url_for('static', filename='profiles/' ~ r.person_id ~ '.jpg') }}" onerror="this.style.display='none'">
+                <div class="feed-body">
+                  <b>{{ r.person_name or '#' ~ r.person_id }}</b>
+                  <span class="feed-sub">
+                    {% if r.check_out %}out at {{ r.check_out }}{% else %}in at {{ r.check_in }}{% endif %}
+                    {% if r.is_late %}<span class="status-chip warn ms-1"><span class="dot"></span> Late</span>{% endif %}
+                  </span>
+                </div>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li class="empty inline"><i class="material-icons-outlined">notifications_none</i><span>No sightings yet.</span></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+
+  <div class="col-xl-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">assignment_turned_in</i>
+          <h5 class="m-0">Today's attendance</h5>
+          <span class="chip">{{ l }} entries</span>
+        </div>
+        <div class="d-flex gap-2">
+          <div class="search-box">
+            <i class="material-icons-outlined md-16">search</i>
+            <input id="rowSearch" type="search" placeholder="Search">
+          </div>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('download') }}">
+            <i class="material-icons md-16">download</i> CSV
+          </a>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('download', fmt='xlsx') }}">
+            <i class="material-icons md-16">grid_on</i> Excel
+          </a>
+        </div>
+      </div>
+      <div class="surface-body p-0">
+        <div class="table-responsive">
+          <table class="table table-clean mb-0">
+            <thead>
+              <tr>
+                <th style="width:60px">#</th>
+                <th>Name</th>
+                <th>Roll No</th>
+                <th>Class</th>
+                <th>Check in</th>
+                <th>Check out</th>
+                <th class="text-end">Status</th>
+              </tr>
+            </thead>
+            <tbody id="attTable">
+              {% if l %}
+                {% for r in rows %}
+                  <tr>
+                    <td class="muted-num">{{ '%02d' % loop.index }}</td>
+                    <td>
+                      <a class="user-cell text-decoration-none text-reset" href="{{ url_for('user_detail', pid=r.person_id) }}">
+                        <img class="avatar-img" src="{{ url_for('static', filename='profiles/' ~ r.person_id ~ '.jpg') }}" onerror="this.outerHTML='<span class=\'avatar\'>{{ (r.person_name or '?')[:1] | upper }}</span>'">
+                        <span>{{ r.person_name or '—' }}</span>
+                      </a>
+                    </td>
+                    <td><span class="badge id-badge">#{{ r.person_id }}</span></td>
+                    <td><span class="dept-chip">{{ r.department_name or '—' }}</span></td>
+                    <td class="mono">{{ r.check_in or '—' }}</td>
+                    <td class="mono">{{ r.check_out or '—' }}</td>
+                    <td class="text-end">
+                      {% if r.is_late %}
+                        <span class="status-chip warn"><span class="dot"></span> Late</span>
+                      {% else %}
+                        <span class="status-chip success"><span class="dot"></span> On time</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="7" class="empty">
+                  <i class="material-icons-outlined">inbox</i>
+                  <span>No attendance recorded yet today.</span>
+                </td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card surface h-100">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">pending_actions</i>
+          <h5 class="m-0">Yet to arrive</h5>
+          <span class="chip">{{ yet_to_arrive | length }}</span>
+        </div>
+      </div>
+      <div class="surface-body p-0">
+        <ul class="absent-list mb-0">
+          {% if yet_to_arrive %}
+            {% for p in yet_to_arrive %}
+              <li>
+                <a href="{{ url_for('user_detail', pid=p.person_id) }}" class="user-cell text-decoration-none text-reset">
+                  <img class="avatar-img" src="{{ url_for('static', filename='profiles/' ~ p.person_id ~ '.jpg') }}" onerror="this.outerHTML='<span class=\'avatar\'>{{ p.name[:1] | upper }}</span>'">
+                  <div>
+                    <div>{{ p.name }}</div>
+                    <small class="text-muted">{{ p.department_name or 'no dept' }} · #{{ p.person_id }}</small>
+                  </div>
+                </a>
+                <form method="POST" action="{{ url_for('manual_mark') }}">
+                  <input type="hidden" name="person_id" value="{{ p.person_id }}">
+                  <input type="hidden" name="action" value="in">
+                  <button class="btn btn-success btn-sm" title="Manual check-in"><i class="material-icons md-16">check</i></button>
+                </form>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li class="empty inline"><i class="material-icons-outlined">task_alt</i><span>Everyone's checked in.</span></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  document.querySelectorAll('.kpi-value[data-count]').forEach(el => {
+    const target = parseInt(el.dataset.count || '0', 10);
+    let cur = 0; const step = Math.max(1, Math.ceil(target / 30));
+    const t = setInterval(() => {
+      cur += step; if (cur >= target) { cur = target; clearInterval(t); }
+      el.textContent = cur;
+    }, 24);
+  });
+
+  const img = document.getElementById('videoStream');
+  const overlay = document.getElementById('videoOverlay');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+
+  let livePoll = null;
+  let capturePoll = null;
+  const announced = new Set();   // ids we've already toasted this session
+
+  function pollRecent() {
+    fetch('/api/recent').then(r => r.json()).then(j => {
+      const ul = document.getElementById('liveFeed');
+      if (!ul) return;
+      if (!j.recent || j.recent.length === 0) return;
+      ul.innerHTML = j.recent.map(r => `
+        <li>
+          <img class="feed-thumb" src="/static/profiles/${r.person_id}.jpg" onerror="this.style.display='none'">
+          <div class="feed-body">
+            <b>${r.person_name || '#' + r.person_id}</b>
+            <span class="feed-sub">${r.check_out ? 'out at ' + r.check_out : 'in at ' + r.check_in}
+            ${r.is_late ? '<span class="status-chip warn ms-1"><span class="dot"></span> Late</span>' : ''}
+            </span>
+          </div>
+        </li>`).join('');
+    }).catch(() => {});
+  }
+
+  function pollCaptured() {
+    fetch('/api/just_captured').then(r => r.json()).then(j => {
+      (j.captured || []).forEach(c => {
+        const key = c.person_id + '|' + new Date().toISOString().slice(0,16);
+        if (announced.has(key)) return;       // dedupe within same minute
+        announced.add(key);
+        const dept = c.department ? ' · ' + c.department : '';
+        window.toast(`✓ ${c.name} marked present${dept}`, 'success', 4000);
+      });
+    }).catch(() => {});
+  }
+
+  startBtn?.addEventListener('click', async () => {
+    startBtn.disabled = true;
+    try {
+      const r = await fetch('/start_recognise', { method: 'POST' });
+      const j = await r.json();
+      if (!j.ok) { startBtn.disabled = false; window.toast(j.msg || 'Failed to start.', 'warn'); return; }
+      img.src = '/video_feed?ts=' + Date.now();
+      overlay.style.display = 'none';
+      stopBtn.disabled = false;
+      window.toast('Recognition started. Crowd mode active.', 'success');
+      livePoll    = setInterval(pollRecent, 3000);
+      capturePoll = setInterval(pollCaptured, 700);   // fast — flash is brief
+    } catch { startBtn.disabled = false; window.toast('Network error.', 'danger'); }
+  });
+  stopBtn?.addEventListener('click', async () => {
+    await fetch('/stop_capture', { method: 'POST' });
+    img.removeAttribute('src');
+    overlay.style.display = '';
+    startBtn.disabled = false; stopBtn.disabled = true;
+    if (livePoll)    clearInterval(livePoll);
+    if (capturePoll) clearInterval(capturePoll);
+    setTimeout(() => location.reload(), 350);
+  });
+
+  document.getElementById('rowSearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('#attTable tr').forEach(tr => {
+      tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+</script>
+{% endblock %}

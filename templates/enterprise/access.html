@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · Access events{% endblock %}
+{% block page_title %}Tailgating & anti-passback (N6){% endblock %}
+{% block page_sub %}Two-people-one-face · re-entry without exit · physical security at HR price{% endblock %}
+{% block content %}
+<div class="page-hero hero-amber">
+  <div class="ph-icn"><i class="material-icons">door_sliding</i></div>
+  <div class="ph-body">
+    <h5>{{ events|length }} access event{{ '' if events|length == 1 else 's' }}</h5>
+    <p>Moves FaceMark from attendance into physical security — a budget HR tools can't touch.</p>
+  </div>
+</div>
+<div class="card surface">
+  <div class="surface-head"><h5 class="m-0">Recent</h5></div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>When</th><th>Kind</th><th>Person</th><th>Branch</th><th>Faces</th><th>Dir</th><th>Detail</th></tr></thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td><span class="mono small">{{ e.seen_at }}</span></td>
+          <td>{% if e.kind == 'tailgate' %}<span class="status-chip danger"><span class="dot"></span> tailgate</span>{% else %}<span class="status-chip warn"><span class="dot"></span> {{ e.kind }}</span>{% endif %}</td>
+          <td>{{ e.person_name or '—' }}</td>
+          <td>{{ e.branch_name or '—' }}</td>
+          <td>{{ e.face_count or '' }}</td>
+          <td>{{ e.direction or '' }}</td>
+          <td><small class="text-muted">{{ e.detail or '' }}</small></td>
+        </tr>
+        {% else %}<tr><td colspan="7"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">door_front</i></div><strong>No access incidents</strong></div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ org_name }}{% endblock %}</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/styles.css') }}?v={{ asset_version }}" rel="stylesheet">
+  <link rel="manifest" href="{{ url_for('manifest') }}">
+  <meta name="theme-color" content="#1f2c5b">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark"><i class="material-icons">face_retouching_natural</i></span>
+      <span class="brand-name">
+        {{ org_name }}
+        <small>Attendance · {{ recognizer_backend }}</small>
+      </span>
+    </div>
+
+    <div class="side-search">
+      <i class="material-icons-outlined">search</i>
+      <input type="text" placeholder="Find a page…" id="sideSearch" autocomplete="off" />
+      <kbd>/</kbd>
+    </div>
+
+    <nav class="side-nav" id="sideNav">
+      <a class="side-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">
+        <i class="material-icons-outlined">dashboard</i><span>Dashboard</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'list_users' %}active{% endif %}" href="{{ url_for('list_users') }}">
+        <i class="material-icons-outlined">group</i><span>Users</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'history' %}active{% endif %}" href="{{ url_for('history') }}">
+        <i class="material-icons-outlined">history</i><span>History</span>
+      </a>
+
+      <div class="side-section">Academics</div>
+      <a class="side-link {% if request.endpoint == 'subjects' %}active{% endif %}" href="{{ url_for('subjects') }}">
+        <i class="material-icons-outlined">menu_book</i><span>Subjects</span>
+      </a>
+      <a class="side-link {% if request.endpoint in ('sessions', 'session_detail') %}active{% endif %}" href="{{ url_for('sessions') }}">
+        <i class="material-icons-outlined">event_note</i><span>Sessions</span>
+        {% if active_session %}<span class="badge bg-success ms-auto" title="active">●</span>{% endif %}
+      </a>
+      <a class="side-link {% if request.endpoint == 'defaulters' %}active{% endif %}" href="{{ url_for('defaulters') }}">
+        <i class="material-icons-outlined">warning_amber</i><span>Defaulters</span>
+      </a>
+
+      <div class="side-section">Operate</div>
+      <a class="side-link" href="{{ url_for('kiosk') }}" target="_blank">
+        <i class="material-icons-outlined">tablet_android</i><span>Kiosk mode</span>
+      </a>
+      <a class="side-link" href="{{ url_for('display_board') }}" target="_blank">
+        <i class="material-icons-outlined">tv</i><span>Big-screen display</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'visitors' %}active{% endif %}" href="{{ url_for('visitors') }}">
+        <i class="material-icons-outlined">no_accounts</i><span>Visitors</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'cameras' %}active{% endif %}" href="{{ url_for('cameras') }}">
+        <i class="material-icons-outlined">videocam</i><span>Cameras</span>
+      </a>
+      <a class="side-link {% if request.endpoint in ('transport','transport_stops') %}active{% endif %}" href="{{ url_for('transport') }}">
+        <i class="material-icons-outlined">directions_bus</i><span>Transport</span>
+      </a>
+      <a class="side-link {% if request.endpoint in ('exams','exam_detail') %}active{% endif %}" href="{{ url_for('exams') }}">
+        <i class="material-icons-outlined">quiz</i><span>Exam mode</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'substitutions_page' %}active{% endif %}" href="{{ url_for('substitutions_page') }}">
+        <i class="material-icons-outlined">swap_horiz</i><span>Substitutions</span>
+      </a>
+
+      <div class="side-section">Workforce</div>
+      <a class="side-link {% if request.endpoint == 'branches' %}active{% endif %}" href="{{ url_for('branches') }}">
+        <i class="material-icons-outlined">apartment</i><span>Branches / Sites</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'shifts' %}active{% endif %}" href="{{ url_for('shifts') }}">
+        <i class="material-icons-outlined">schedule</i><span>Shifts</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'leaves' %}active{% endif %}" href="{{ url_for('leaves') }}">
+        <i class="material-icons-outlined">event_busy</i><span>Leaves</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'timetable' %}active{% endif %}" href="{{ url_for('timetable') }}">
+        <i class="material-icons-outlined">view_week</i><span>Timetable</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'holidays' %}active{% endif %}" href="{{ url_for('holidays') }}">
+        <i class="material-icons-outlined">today</i><span>Holidays</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'payroll_view' %}active{% endif %}" href="{{ url_for('payroll_view') }}">
+        <i class="material-icons-outlined">payments</i><span>Payroll</span>
+      </a>
+
+      {% if site_mode_on %}
+      <div class="side-section">Site (Construction)</div>
+      <a class="side-link {% if request.endpoint == 'contractors' %}active{% endif %}" href="{{ url_for('contractors') }}">
+        <i class="material-icons-outlined">engineering</i><span>Contractors</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'site_muster' %}active{% endif %}" href="{{ url_for('site_muster') }}">
+        <i class="material-icons-outlined">construction</i><span>Muster roll</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'ppe_view' %}active{% endif %}" href="{{ url_for('ppe_view') }}">
+        <i class="material-icons-outlined">health_and_safety</i><span>PPE incidents</span>
+      </a>
+      {% endif %}
+
+      <div class="side-section">Reports</div>
+      <a class="side-link {% if request.endpoint == 'cctv.cctv_wall' %}active{% endif %}" href="{{ url_for('cctv.cctv_wall') }}">
+        <i class="material-icons-outlined">videocam</i><span>CCTV wall</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'analytics' %}active{% endif %}" href="{{ url_for('analytics') }}">
+        <i class="material-icons-outlined">insights</i><span>Analytics</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'at_risk' %}active{% endif %}" href="{{ url_for('at_risk') }}">
+        <i class="material-icons-outlined">trending_down</i><span>At-risk</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'proxy_proof' %}active{% endif %}" href="{{ url_for('proxy_proof') }}">
+        <i class="material-icons-outlined">verified_user</i><span>Proxy-Proof status</span>
+      </a>
+
+      <div class="side-section">Enterprise (N1–N20)</div>
+      <a class="side-link {% if request.endpoint == 'enterprise.enterprise_hub' %}active{% endif %}" href="{{ url_for('enterprise.enterprise_hub') }}">
+        <i class="material-icons-outlined">workspaces</i><span>Hub</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.copilot_page' %}active{% endif %}" href="{{ url_for('enterprise.copilot_page') }}">
+        <i class="material-icons-outlined">auto_awesome</i><span>AI Copilot</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.analytics_page' %}active{% endif %}" href="{{ url_for('enterprise.analytics_page') }}">
+        <i class="material-icons-outlined">monitoring</i><span>Workforce analytics</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.connectors_admin' %}active{% endif %}" href="{{ url_for('enterprise.connectors_admin') }}">
+        <i class="material-icons-outlined">share</i><span>HRMS connectors</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.workflows_admin' %}active{% endif %}" href="{{ url_for('enterprise.workflows_admin') }}">
+        <i class="material-icons-outlined">approval</i><span>Workflows</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.muster_page' %}active{% endif %}" href="{{ url_for('enterprise.muster_page') }}">
+        <i class="material-icons-outlined">crisis_alert</i><span>Mustering</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.occupancy_admin' %}active{% endif %}" href="{{ url_for('enterprise.occupancy_admin') }}">
+        <i class="material-icons-outlined">chair</i><span>Occupancy</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.spoof_admin' %}active{% endif %}" href="{{ url_for('enterprise.spoof_admin') }}">
+        <i class="material-icons-outlined">no_photography</i><span>Deepfake events</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.access_admin' %}active{% endif %}" href="{{ url_for('enterprise.access_admin') }}">
+        <i class="material-icons-outlined">door_sliding</i><span>Access events</span>
+      </a>
+
+      <div class="side-section">Go-to-Market</div>
+      <a class="side-link {% if request.endpoint == 'enterprise.pricing_page' %}active{% endif %}" href="{{ url_for('enterprise.pricing_page') }}">
+        <i class="material-icons-outlined">payments</i><span>Pricing tiers</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.comparison_page' %}active{% endif %}" href="{{ url_for('enterprise.comparison_page') }}">
+        <i class="material-icons-outlined">leaderboard</i><span>Competitor matrix</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.playbook_page' %}active{% endif %}" href="{{ url_for('enterprise.playbook_page') }}">
+        <i class="material-icons-outlined">menu_book</i><span>GTM playbook</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.compliance_pack' %}active{% endif %}" href="{{ url_for('enterprise.compliance_pack') }}">
+        <i class="material-icons-outlined">verified</i><span>SOC2 evidence pack</span>
+      </a>
+
+      <div class="side-section">IT & Security</div>
+      {% if admin_role == 'admin' %}
+      <a class="side-link {% if request.endpoint == 'enterprise.sso_admin' %}active{% endif %}" href="{{ url_for('enterprise.sso_admin') }}">
+        <i class="material-icons-outlined">vpn_key</i><span>SSO (N1)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.scim_admin' %}active{% endif %}" href="{{ url_for('enterprise.scim_admin') }}">
+        <i class="material-icons-outlined">sync_alt</i><span>SCIM (N2)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.siem_admin' %}active{% endif %}" href="{{ url_for('enterprise.siem_admin') }}">
+        <i class="material-icons-outlined">stacked_line_chart</i><span>SIEM (N3)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.kms_admin' %}active{% endif %}" href="{{ url_for('enterprise.kms_admin') }}">
+        <i class="material-icons-outlined">key_off</i><span>BYO-KMS (N7)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.tenants_admin' %}active{% endif %}" href="{{ url_for('enterprise.tenants_admin') }}">
+        <i class="material-icons-outlined">hub</i><span>Tenants (N17)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.whitelabel_admin' %}active{% endif %}" href="{{ url_for('enterprise.whitelabel_admin') }}">
+        <i class="material-icons-outlined">palette</i><span>White-label (N18)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'enterprise.sdk_admin' %}active{% endif %}" href="{{ url_for('enterprise.sdk_admin') }}">
+        <i class="material-icons-outlined">extension</i><span>Face-auth SDK (N19)</span>
+      </a>
+      {% endif %}
+
+      <div class="side-section">Admin</div>
+      <a class="side-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">
+        <i class="material-icons-outlined">tune</i><span>Settings</span>
+      </a>
+      {% if admin_role == 'admin' %}
+      <a class="side-link {% if request.endpoint == 'admins' %}active{% endif %}" href="{{ url_for('admins') }}">
+        <i class="material-icons-outlined">manage_accounts</i><span>Admins (RBAC)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'privacy_console' %}active{% endif %}" href="{{ url_for('privacy_console') }}">
+        <i class="material-icons-outlined">privacy_tip</i><span>Privacy (DPDP)</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'api_keys' %}active{% endif %}" href="{{ url_for('api_keys') }}">
+        <i class="material-icons-outlined">key</i><span>API & Webhooks</span>
+      </a>
+      <a class="side-link {% if request.endpoint == 'backup_view' %}active{% endif %}" href="{{ url_for('backup_view') }}">
+        <i class="material-icons-outlined">cloud_upload</i><span>Backup</span>
+      </a>
+      {% endif %}
+      <a class="side-link {% if request.endpoint == 'audit_view' %}active{% endif %}" href="{{ url_for('audit_view') }}">
+        <i class="material-icons-outlined">policy</i><span>Audit log</span>
+      </a>
+      <a class="side-link" href="{{ url_for('docs_download') }}" target="_blank">
+        <i class="material-icons-outlined">picture_as_pdf</i><span>Documentation</span>
+      </a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="side-card">
+        <div class="side-card-title">Today</div>
+        <div class="side-card-value" id="sideClock">--:--</div>
+        <div class="side-card-sub">{{ datetoday2 }}</div>
+      </div>
+      {% if admin_user %}
+      <a class="side-logout" href="{{ url_for('logout') }}">
+        <i class="material-icons-outlined md-18">logout</i> Sign out ({{ admin_user }})
+      </a>
+      {% endif %}
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+        <i class="material-icons">menu</i>
+      </button>
+      <div class="topbar-title">
+        <div class="crumb">{% block crumb %}{{ org_name }}{% endblock %}</div>
+        <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+        <p>{% block page_sub %}Real-time face recognition attendance{% endblock %}</p>
+      </div>
+      <div class="topbar-right">
+        <span class="pill" title="Server is reachable"><span class="pulse"></span> Online</span>
+        {% if model_trained %}
+          <span class="pill pill-good" title="Recogniser model is trained">
+            <i class="material-icons md-16">verified</i> Model
+          </span>
+        {% else %}
+          <span class="pill pill-warn" title="No trained recogniser yet — register a user">
+            <i class="material-icons md-16">model_training</i> Model
+          </span>
+        {% endif %}
+        {% if liveness_on %}
+          <span class="pill pill-good" title="Liveness anti-spoofing on">
+            <i class="material-icons md-16">remove_red_eye</i> Liveness
+          </span>
+        {% endif %}
+        <div class="dropdown">
+          <button class="pill ghost" data-bs-toggle="dropdown" aria-expanded="false" title="Language">
+            <i class="material-icons md-16">language</i>
+            {{ lang|upper }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for code, label in languages %}
+              <li><a class="dropdown-item" href="{{ url_for('set_lang', code=code) }}">{{ label }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% if admin_user %}
+        <div class="dropdown">
+          <button class="role-chip" data-bs-toggle="dropdown" aria-expanded="false" title="Account">
+            <span class="role-avatar">{{ admin_user[0]|upper }}</span>
+            <span class="d-none d-md-inline">{{ admin_user }}</span>
+            <span class="d-none d-md-inline text-muted">· {{ admin_role }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{{ url_for('settings') }}">
+              <i class="material-icons-outlined md-16">tune</i> Settings
+            </a></li>
+            <li><a class="dropdown-item" href="{{ url_for('audit_view') }}">
+              <i class="material-icons-outlined md-16">policy</i> Audit log
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+              <i class="material-icons-outlined md-16">logout</i> Sign out
+            </a></li>
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+      <div id="toastDeck" class="toast-deck" aria-live="polite"></div>
+    </header>
+
+    <div class="content">
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          {% for cat, m in msgs %}
+            <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+              {{ m }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+
+    <footer class="app-footer">
+      <span class="ft-pill"><i class="material-icons-outlined">copyright</i> {{ org_name }}</span>
+      <span class="ft-pill"><i class="material-icons-outlined">memory</i> {{ recognizer_backend }}</span>
+      <span class="ft-pill"><i class="material-icons-outlined">bolt</i> Flask</span>
+      <span class="ft-pill"><i class="material-icons-outlined">event</i> {{ datetoday2 }}</span>
+    </footer>
+
+    {# Floating Copilot widget — available on every authenticated page #}
+    {% if admin_user %}
+    <button class="fab-copilot" id="fabCopilot" aria-label="Open AI Copilot">
+      <i class="material-icons-outlined">auto_awesome</i>
+    </button>
+    <div class="fab-tip" id="fabTip">Ask the AI Copilot · press <kbd>?</kbd></div>
+
+    <div class="copilot-backdrop" id="copilotBackdrop"></div>
+    <aside class="copilot-panel" id="copilotPanel" aria-hidden="true">
+      <div class="copilot-head">
+        <span class="ch-icn"><i class="material-icons-outlined">auto_awesome</i></span>
+        <div class="ch-title">AI Workforce Copilot
+          <small>Ask anything · attendance · setup · features</small>
+        </div>
+        <button class="ch-close" id="copilotClose" aria-label="Close">
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+      <div class="copilot-body">
+        <div class="quick-section">New here? Start with</div>
+        <div class="quick-row">
+          <button data-q="tell me about the platform">platform overview</button>
+          <button data-q="how does this work">how does it work</button>
+          <button data-q="what can you do">what can the Copilot do</button>
+          <button data-q="how do I navigate">how do I navigate</button>
+        </div>
+        <div class="quick-section">Attendance &amp; reports</div>
+        <div class="quick-row">
+          <button data-q="how many entries today?">entries today</button>
+          <button data-q="who was late this week?">late this week</button>
+          <button data-q="absent today">absent today</button>
+          <button data-q="top 5 attenders this month">top attenders</button>
+          <button data-q="who is at risk">at-risk</button>
+        </div>
+        <div class="quick-section">How do I…</div>
+        <div class="quick-row">
+          <button class="amber" data-q="how do I register a new user?">register a user</button>
+          <button class="amber" data-q="how do I enable liveness?">enable liveness</button>
+          <button class="amber" data-q="how do I set up SSO?">set up SSO</button>
+          <button class="amber" data-q="how do I run payroll?">run payroll</button>
+          <button class="amber" data-q="how do I add a branch?">add a branch</button>
+        </div>
+        <div class="quick-section">What is…</div>
+        <div class="quick-row">
+          <button class="green" data-q="what is LBPH?">LBPH</button>
+          <button class="green" data-q="what is liveness?">liveness</button>
+          <button class="green" data-q="what is N5 deepfake?">N5 deepfake</button>
+        </div>
+        <div id="copilotOut" class="copilot-out"></div>
+      </div>
+      <div class="copilot-foot">
+        <input id="copilotInput" placeholder="Ask anything in plain English…" />
+        <button id="copilotAsk">
+          <i class="material-icons md-16">send</i>
+        </button>
+      </div>
+    </aside>
+    {% endif %}
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script nonce="{{ csp_nonce() }}">
+  function tick() {
+    const d = new Date();
+    const c = document.getElementById('sideClock');
+    if (c) c.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+  setInterval(tick, 1000); tick();
+
+  document.getElementById('sidebarToggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.querySelector('.app-shell').classList.toggle('shell-collapsed');
+  });
+
+  // Floating Copilot widget — global on every authenticated page
+  (function () {
+    const fab     = document.getElementById('fabCopilot');
+    const tip     = document.getElementById('fabTip');
+    const panel   = document.getElementById('copilotPanel');
+    const back    = document.getElementById('copilotBackdrop');
+    const closeB  = document.getElementById('copilotClose');
+    const input   = document.getElementById('copilotInput');
+    const askBtn  = document.getElementById('copilotAsk');
+    const out     = document.getElementById('copilotOut');
+    if (!fab || !panel) return;
+
+    function show() {
+      panel.classList.add('show'); back.classList.add('show');
+      panel.setAttribute('aria-hidden', 'false');
+      setTimeout(() => input && input.focus(), 200);
+    }
+    function hide() {
+      panel.classList.remove('show'); back.classList.remove('show');
+      panel.setAttribute('aria-hidden', 'true');
+    }
+    fab.addEventListener('click', show);
+    closeB.addEventListener('click', hide);
+    back.addEventListener('click', hide);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && panel.classList.contains('show')) hide();
+      if (e.key === '?' && document.activeElement.tagName !== 'INPUT'
+                       && document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault(); show();
+      }
+    });
+    // Brief tip on first visit
+    if (!sessionStorage.getItem('fmTipShown')) {
+      tip.classList.add('show');
+      setTimeout(() => tip.classList.remove('show'), 4000);
+      sessionStorage.setItem('fmTipShown', '1');
+    }
+
+    function esc(s) {
+      return (s == null ? '' : String(s))
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function fmt(text) {
+      return esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    }
+    function renderResult(j) {
+      let html = '';
+      if (!j.ok) {
+        html += `<div class="alert alert-warning"><strong>${esc(j.summary)}</strong></div>`;
+        if (j.suggestions && j.suggestions.length) {
+          html += '<div class="quick-row" style="margin-top:8px;">' +
+            j.suggestions.map(s => `<button data-q="${esc(s)}">${esc(s)}</button>`).join('') +
+            '</div>';
+        }
+      } else if (j.kind === 'kb') {
+        html += `<div class="alert" style="background:#eef2ff;color:#3730a3;border:0;border-radius:10px;"><strong>${esc(j.title)}</strong></div>`;
+        if (j.steps && j.steps.length) {
+          html += '<ol>' + j.steps.map(s => `<li>${fmt(s)}</li>`).join('') + '</ol>';
+        }
+        if (j.links && j.links.length) {
+          html += '<div class="quick-row" style="margin-top:10px;">' +
+            j.links.map(l => `<button onclick="location.href='${esc(l.href)}'">↗ ${esc(l.label)}</button>`).join('') +
+            '</div>';
+        }
+      } else if (j.kind === 'sql') {
+        html += `<div class="alert" style="background:#ecfdf5;color:#065f46;border:0;border-radius:10px;"><strong>${esc(j.summary)}</strong></div>`;
+        if (j.rows && j.rows.length) {
+          html += '<div style="overflow-x:auto;"><table><thead><tr>' +
+            j.columns.map(c => `<th>${esc(c)}</th>`).join('') +
+            '</tr></thead><tbody>' +
+            j.rows.map(r => '<tr>' + j.columns.map(c => `<td>${esc(r[c])}</td>`).join('') + '</tr>').join('') +
+            '</tbody></table></div>';
+        }
+      } else {
+        html += `<div class="alert alert-warning">${esc(j.summary)}</div>`;
+      }
+      out.innerHTML = html;
+      // Re-bind suggestion / link chips
+      out.querySelectorAll('[data-q]').forEach(b =>
+        b.addEventListener('click', () => { input.value = b.dataset.q; ask(); }));
+    }
+    function ask() {
+      const q = (input.value || '').trim();
+      if (!q) return;
+      out.innerHTML = '<div class="text-muted small">Thinking…</div>';
+      const fd = new FormData(); fd.append('q', q);
+      fetch('{{ url_for("enterprise.copilot_ask") }}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(renderResult)
+        .catch(e => { out.innerHTML = '<div class="alert alert-danger">Network error: ' + esc(e) + '</div>'; });
+    }
+    askBtn.addEventListener('click', ask);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+
+    // Initial quick-pick chips
+    document.querySelectorAll('.copilot-body [data-q]').forEach(b =>
+      b.addEventListener('click', () => { input.value = b.dataset.q; ask(); }));
+  })();
+
+  // Auto-CSRF: inject a hidden token into every same-origin POST form
+  (function () {
+    const tok = '{{ csrf_token() }}';
+    if (!tok) return;
+    function decorate(form) {
+      if (form.method && form.method.toLowerCase() === 'get') return;
+      if (form.querySelector('input[name="csrf_token"]')) return;
+      const inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = 'csrf_token'; inp.value = tok;
+      form.appendChild(inp);
+    }
+    document.querySelectorAll('form').forEach(decorate);
+    new MutationObserver(muts => {
+      muts.forEach(m => m.addedNodes.forEach(n => {
+        if (!(n instanceof HTMLElement)) return;
+        if (n.tagName === 'FORM') decorate(n);
+        n.querySelectorAll && n.querySelectorAll('form').forEach(decorate);
+      }));
+    }).observe(document.body, { childList: true, subtree: true });
+
+    // For fetch() POSTs send the X-CSRF-Token header automatically
+    const origFetch = window.fetch.bind(window);
+    window.fetch = function (url, opts) {
+      opts = opts || {};
+      const m = (opts.method || 'GET').toUpperCase();
+      if (m !== 'GET' && m !== 'HEAD') {
+        opts.headers = Object.assign({}, opts.headers || {}, { 'X-CSRF-Token': tok });
+      }
+      return origFetch(url, opts);
+    };
+  })();
+
+  // Sidebar live filter — type in the search box, links collapse to matches
+  (function () {
+    const input = document.getElementById('sideSearch');
+    const nav   = document.getElementById('sideNav');
+    if (!input || !nav) return;
+    const links = Array.from(nav.querySelectorAll('.side-link'));
+    const sections = Array.from(nav.querySelectorAll('.side-section'));
+
+    function apply(q) {
+      q = (q || '').toLowerCase().trim();
+      links.forEach(a => {
+        const text = a.textContent.toLowerCase();
+        a.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+      // Hide section labels with no visible links following them
+      sections.forEach(sec => {
+        let n = sec.nextElementSibling;
+        let anyVisible = false;
+        while (n && !n.classList.contains('side-section')) {
+          if (n.classList.contains('side-link') && n.style.display !== 'none') {
+            anyVisible = true; break;
+          }
+          n = n.nextElementSibling;
+        }
+        sec.style.display = anyVisible ? '' : 'none';
+      });
+    }
+    input.addEventListener('input', e => apply(e.target.value));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { input.value = ''; apply(''); input.blur(); }
+    });
+    // Global "/" focuses the sidebar search; Esc closes it.
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement.tagName !== 'INPUT' &&
+          document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        input.focus();
+        input.select();
+      }
+    });
+  })();
+
+  window.toast = function (msg, kind = 'info', ttl = 4500) {
+    const deck = document.getElementById('toastDeck');
+    if (!deck) return;
+    const el = document.createElement('div');
+    el.className = 'toast-item toast-' + kind;
+    const icn = kind === 'success' ? 'check_circle' :
+                kind === 'warn'    ? 'warning_amber' :
+                kind === 'danger'  ? 'error_outline' : 'info';
+    el.innerHTML = `<i class="material-icons-outlined">${icn}</i><span>${msg}</span>
+                    <button class="toast-close">&times;</button>`;
+    el.querySelector('.toast-close').addEventListener('click', () => el.remove());
+    deck.appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, ttl);
+  };
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

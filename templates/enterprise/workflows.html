@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · Workflows{% endblock %}
+{% block page_title %}Approval workflow engine (N12){% endblock %}
+{% block page_sub %}No-code chains for overtime · comp-off · WFH · regularisation{% endblock %}
+{% block content %}
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">approval</i></div>
+  <div class="ph-body"><h5>Matches what Rippling/Keka sell as "workflows"</h5></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Defined workflows</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Trigger</th><th>Steps</th><th></th></tr></thead>
+          <tbody>
+            {% for w in workflows %}
+            <tr>
+              <td><strong>{{ w.name }}</strong></td>
+              <td><span class="badge-soft badge">{{ w.trigger }}</span></td>
+              <td><span class="mono small">{{ w.steps_json }}</span></td>
+              <td class="text-end"><form method="POST" class="d-inline"><input type="hidden" name="delete" value="{{ w.id }}"><button class="btn btn-sm btn-danger-soft">×</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="4"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">rule</i></div><strong>No workflows defined</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card surface mt-3"><div class="surface-head"><h5 class="m-0">Pending runs</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>When</th><th>Workflow</th><th>Subject</th><th>State</th><th>Step</th><th></th></tr></thead>
+          <tbody>
+            {% for r in runs %}
+            <tr>
+              <td><span class="mono small">{{ r.created_at }}</span></td>
+              <td>{{ r.workflow_name }}</td>
+              <td><span class="mono">{{ r.subject }}</span></td>
+              <td>
+                {% if r.state == 'approved' %}<span class="status-chip success"><span class="dot"></span> approved</span>
+                {% elif r.state == 'rejected' %}<span class="status-chip danger"><span class="dot"></span> rejected</span>
+                {% else %}<span class="status-chip warn"><span class="dot"></span> pending</span>{% endif %}
+              </td>
+              <td>{{ r.step_idx }}</td>
+              <td class="text-end">
+                {% if r.state == 'pending' %}
+                <form method="POST" action="{{ url_for('enterprise.workflows_decide', run_id=r.id) }}" class="d-inline">
+                  <button name="decision" value="approved" class="btn btn-xs btn-soft-success">✓</button>
+                  <button name="decision" value="rejected" class="btn btn-xs btn-soft-amber">✗</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}<tr><td colspan="6" class="text-center text-muted py-3">No runs yet.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Define workflow</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Name</label><input name="name" class="form-control" placeholder="WFH approval" required></div>
+          <div class="fld"><label>Trigger</label>
+            <select name="trigger" class="form-select">
+              {% for t in ['leave','overtime','wfh','comp_off','regularisation'] %}
+              <option value="{{ t }}">{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fld"><label>Steps JSON</label>
+            <textarea name="steps_json" class="form-control mono" rows="4">[{"role":"manager"},{"role":"hr"}]</textarea>
+            <small class="hint">Array of step objects. Each step has a "role" the approver must hold.</small>
+          </div>
+          <button class="btn btn-primary w-100">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

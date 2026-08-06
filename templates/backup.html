@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block page_title %}Cloud backup{% endblock %}
+{% block page_sub %}Encrypted off-site copy of DB + face crops{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">cloud_upload</i></div>
+  <div class="ph-body">
+    <h5>One-way, encrypted, multi-destination</h5>
+    <p>Bundles SQLite + face crops, encrypts with AES-256 derived from
+       <code>FACEMARK_SECRET</code>, and either writes locally, PUTs to a presigned
+       URL, or invokes a custom shell command. Only your secret can decrypt.</p>
+  </div>
+</div>
+
+<div class="stat-strip">
+  <div class="stat-tile {{ 'success' if settings.get('backup_enabled') == '1' else 'warn' }}">
+    <div class="st-label">Nightly</div>
+    <div class="st-value">{{ 'ON' if settings.get('backup_enabled') == '1' else 'OFF' }}</div>
+    <div class="st-sub">02:30 daily</div>
+  </div>
+  <div class="stat-tile accent">
+    <div class="st-label">Runs (50)</div>
+    <div class="st-value">{{ logs|length }}</div>
+  </div>
+  <div class="stat-tile success">
+    <div class="st-label">OK</div>
+    <div class="st-value">{{ logs | selectattr('status','equalto','ok') | list | length }}</div>
+  </div>
+  <div class="stat-tile danger">
+    <div class="st-label">Failed</div>
+    <div class="st-value">{{ logs | selectattr('status','equalto','error') | list | length }}</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">history</i> Run history</h5>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>When</th><th>Destination</th><th>Bytes</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for r in logs %}
+            <tr>
+              <td><span class="mono">{{ r.created_at }}</span></td>
+              <td><span class="url-chip">{{ r.destination[:64] }}</span></td>
+              <td><span class="mono">{{ '{:,}'.format(r.bytes) }}</span></td>
+              <td>
+                {% if r.status == 'ok' %}<span class="status-chip success"><span class="dot"></span> ok</span>
+                {% elif r.status == 'error' %}<span class="status-chip danger"><span class="dot"></span> error</span>
+                {% else %}<span class="status-chip warn"><span class="dot"></span> {{ r.status }}</span>{% endif %}
+                {% if r.detail %}<div class="text-muted small">{{ r.detail }}</div>{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">
+              <div class="empty">
+                <i class="material-icons-outlined">cloud_off</i>
+                <strong>No backups run yet</strong>
+                <div>Configure a destination on the right, then click "Run now".</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">settings_input_antenna</i> Configure</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="backup_enabled" value="1"
+                   {% if settings.get('backup_enabled') == '1' %}checked{% endif %} id="bOn">
+            <label class="form-check-label" for="bOn">Run nightly at 02:30</label>
+          </div>
+          <div class="fld">
+            <label>Local directory <span class="hint">(NAS / external drive)</span></label>
+            <input class="form-control" name="backup_local_dir"
+                   value="{{ settings.get('backup_local_dir','') }}"
+                   placeholder="/var/backups/facemark">
+          </div>
+          <div class="fld">
+            <label>PUT URL <span class="hint">(S3 / R2 / presigned)</span></label>
+            <input class="form-control" name="backup_put_url"
+                   value="{{ settings.get('backup_put_url','') }}"
+                   placeholder="https://….s3.amazonaws.com/facemark-bucket">
+          </div>
+          <div class="fld">
+            <label>Shell command <span class="hint">(rclone, rsync)</span></label>
+            <input class="form-control" name="backup_command"
+                   value="{{ settings.get('backup_command','') }}"
+                   placeholder="rclone copy {file} remote:bucket/">
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary flex-fill">
+              <i class="material-icons md-16">save</i> Save
+            </button>
+            <button class="btn btn-ghost" name="run" value="1">
+              <i class="material-icons md-16">cloud_upload</i> Run now
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

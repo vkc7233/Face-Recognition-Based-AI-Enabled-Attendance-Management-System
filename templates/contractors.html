@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block page_title %}Contractors{% endblock %}
+{% block page_sub %}Per-contractor head-counts for site billing{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-amber">
+  <div class="ph-icn"><i class="material-icons">engineering</i></div>
+  <div class="ph-body">
+    <h5>{{ contractors|length }} contractor{{ '' if contractors|length == 1 else 's' }}</h5>
+    <p>Tag each worker by contractor so daily muster rolls up by party.
+       Wage payouts roll up to the contractor's account, not individuals.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">groups</i> All contractors</h5>
+        <span class="chip ghost">{{ contractors|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Contact</th><th>Site</th><th>Joined</th></tr></thead>
+          <tbody>
+            {% for c in contractors %}
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <span class="avatar">{{ c.name[0] | upper }}</span>
+                  <strong>{{ c.name }}</strong>
+                </div>
+              </td>
+              <td><span class="mono">{{ c.contact or '—' }}</span></td>
+              <td>
+                {% if c.site_name %}<span class="chip">{{ c.site_name }}</span>
+                {% else %}<span class="dept-chip">All sites</span>{% endif %}
+              </td>
+              <td><span class="mono">{{ c.created_at[:10] }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">
+              <div class="empty">
+                <i class="material-icons-outlined">engineering</i>
+                <strong>No contractors yet</strong>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_business</i> Add contractor</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Name</label><input name="name" class="form-control" required></div>
+          <div class="fld"><label>Contact</label><input name="contact" class="form-control" placeholder="Phone / email"></div>
+          <div class="fld">
+            <label>Site</label>
+            <select name="site_id" class="form-select">
+              <option value="">All sites</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">add</i> Add
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

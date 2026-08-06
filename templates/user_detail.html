@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% block title %}{{ person.name }} · {{ org_name }}{% endblock %}
+{% block page_title %}{{ person.name }}{% endblock %}
+{% block page_sub %}#{{ person.person_id }} · {{ person.department_name or 'no department' }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-lg-4">
+    <div class="card surface text-center">
+      <div class="surface-body">
+        <img class="profile-large"
+             src="{{ url_for('static', filename='profiles/' ~ person.person_id ~ '.jpg') }}"
+             onerror="this.style.display='none'">
+        <h4 class="mt-3 mb-0">{{ person.name }}</h4>
+        <p class="text-muted small">#{{ person.person_id }}</p>
+
+        <div class="d-flex gap-2 justify-content-center my-3 flex-wrap">
+          <form method="POST" action="{{ url_for('manual_mark') }}">
+            <input type="hidden" name="person_id" value="{{ person.person_id }}">
+            <input type="hidden" name="action" value="in">
+            <button class="btn btn-success btn-sm"><i class="material-icons md-16">check</i> Check in</button>
+          </form>
+          <form method="POST" action="{{ url_for('manual_mark') }}">
+            <input type="hidden" name="person_id" value="{{ person.person_id }}">
+            <input type="hidden" name="action" value="out">
+            <button class="btn btn-ghost btn-sm"><i class="material-icons md-16">logout</i> Check out</button>
+          </form>
+          <a class="btn btn-ghost btn-sm" target="_blank" href="{{ url_for('idcard', pid=person.person_id) }}">
+            <i class="material-icons md-16">badge</i> ID card
+          </a>
+        </div>
+
+        <div class="row text-start small mt-3">
+          <div class="col-6 text-muted">Department</div>
+          <div class="col-6 text-end">{{ person.department_name or '—' }}</div>
+          <div class="col-6 text-muted">Email</div>
+          <div class="col-6 text-end mono">{{ person.email or '—' }}</div>
+          <div class="col-6 text-muted">Phone</div>
+          <div class="col-6 text-end mono">{{ person.phone or '—' }}</div>
+          <div class="col-6 text-muted">Guardian phone</div>
+          <div class="col-6 text-end mono">{{ person.guardian_phone or '—' }}</div>
+          <div class="col-6 text-muted">PIN set?</div>
+          <div class="col-6 text-end">
+            {% if person.pin_hash %}<span class="badge bg-success">yes</span>
+            {% else %}<span class="badge bg-warning text-dark">no</span>{% endif %}
+          </div>
+          <div class="col-6 text-muted">Added</div>
+          <div class="col-6 text-end mono">{{ person.created_at[:10] if person.created_at else '' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card surface mt-3">
+      <div class="surface-head"><h6 class="m-0">PIN, QR & RFID (fallback marking)</h6></div>
+      <div class="surface-body">
+        <form method="POST" action="{{ url_for('set_pin', pid=person.person_id) }}" class="row g-2">
+          <div class="col-8"><input name="pin" inputmode="numeric" pattern="[0-9]*"
+                                     class="form-control" placeholder="4-8 digit PIN"></div>
+          <div class="col-4"><button class="btn btn-primary w-100">Set PIN</button></div>
+        </form>
+        <a class="btn btn-sm btn-ghost mt-2"
+           href="{{ url_for('rotate_qr', pid=person.person_id) }}">
+          <i class="material-icons md-16">qr_code_2</i> Rotate QR secret
+        </a>
+        <form method="POST" action="{{ url_for('set_rfid', pid=person.person_id) }}" class="row g-2 mt-2">
+          <div class="col-8"><input name="uid" class="form-control"
+                                     placeholder="RFID UID (tap card reader)"
+                                     value="{{ person.rfid_uid or '' }}"></div>
+          <div class="col-4"><button class="btn btn-secondary w-100">Link RFID</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card surface mt-3">
+      <div class="surface-head"><h6 class="m-0">Reports & data</h6></div>
+      <div class="surface-body vstack gap-2">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('parent_pack', pid=person.person_id) }}" target="_blank">
+          <i class="material-icons md-16">family_restroom</i> Parent-meeting pack
+        </a>
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{{ url_for('privacy_export', pid=person.person_id) }}">
+          <i class="material-icons md-16">download</i> Full data export (ZIP)
+        </a>
+      </div>
+    </div>
+
+    <div class="card surface mt-3">
+      <div class="surface-head"><h6 class="m-0">Consent</h6></div>
+      <div class="surface-body">
+        <form method="POST" action="{{ url_for('privacy_consent') }}" class="row g-2">
+          <input type="hidden" name="person_id" value="{{ person.person_id }}">
+          <div class="col-7">
+            <select name="purpose" class="form-select form-select-sm">
+              <option value="biometric">Biometric</option>
+              <option value="notifications">Notifications</option>
+              <option value="payroll">Payroll</option>
+            </select>
+          </div>
+          <div class="col-5">
+            <button name="granted" value="1" class="btn btn-sm btn-success w-100">Grant</button>
+          </div>
+          <div class="col-12">
+            <input class="form-control form-control-sm" name="proof_text" placeholder="Proof wording shown to person">
+          </div>
+        </form>
+        <form method="POST" action="{{ url_for('privacy_erase', pid=person.person_id) }}"
+              onsubmit="return confirm('Erase ALL data for this person? Cannot be undone.')" class="mt-2">
+          <button class="btn btn-sm btn-outline-danger w-100">Right-to-erasure</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="grid grid-3 mb-4">
+      <div class="kpi kpi-emerald">
+        <div class="kpi-icn"><i class="material-icons">how_to_reg</i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">Days present</span>
+          <span class="kpi-value">{{ present }}</span>
+        </div>
+      </div>
+      <div class="kpi kpi-amber">
+        <div class="kpi-icn"><i class="material-icons">schedule</i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">Days late</span>
+          <span class="kpi-value">{{ late }}</span>
+        </div>
+      </div>
+      <div class="kpi kpi-indigo">
+        <div class="kpi-icn"><i class="material-icons">percent</i></div>
+        <div class="kpi-body">
+          <span class="kpi-label">Attendance %</span>
+          <span class="kpi-value">{% if days %}{{ ((present / days) * 100) | round(0, 'floor') | int }}{% else %}0{% endif %}<small>%</small></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card surface mb-4">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">calendar_view_month</i> 90-day attendance pattern</h5>
+        <span class="chip ghost">green = on time · amber = late · grey = absent</span>
+      </div>
+      <div class="surface-body">
+        <div id="heatmap" class="heatmap"></div>
+      </div>
+    </div>
+
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">history</i> Attendance — last {{ days }} days</h5>
+        <form method="GET">
+          <select name="days" class="form-select form-select-sm" onchange="this.form.submit()">
+            {% for d in [7, 14, 30, 60, 90] %}
+              <option value="{{ d }}" {% if d == days %}selected{% endif %}>Last {{ d }} days</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      <div class="surface-body p-0">
+        <div class="table-responsive">
+          <table class="table table-clean mb-0">
+            <thead><tr><th>Date</th><th>Check in</th><th>Check out</th><th class="text-end">Status</th></tr></thead>
+            <tbody>
+              {% if rows %}
+                {% for r in rows %}
+                  <tr>
+                    <td class="mono">{{ r.date }}</td>
+                    <td class="mono">{{ r.check_in or '—' }}</td>
+                    <td class="mono">{{ r.check_out or '—' }}</td>
+                    <td class="text-end">
+                      {% if r.is_late %}
+                        <span class="status-chip warn"><span class="dot"></span> Late</span>
+                      {% else %}
+                        <span class="status-chip success"><span class="dot"></span> On time</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="4" class="empty">
+                  <i class="material-icons-outlined">event_busy</i>
+                  <span>No attendance in this window.</span>
+                </td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  (async () => {
+    const r = await fetch('/api/heatmap/{{ person.person_id }}?days=90');
+    const j = await r.json();
+    const el = document.getElementById('heatmap');
+    if (!el || !j.days) return;
+    el.innerHTML = j.days.map(d => {
+      const cls = d.level === 3 ? 'lvl-3'
+                : d.level === 2 ? 'lvl-2'
+                : 'lvl-0';
+      return `<span class="hm-cell ${cls}" title="${d.date}"></span>`;
+    }).join('');
+  })();
+</script>
+{% endblock %}
+

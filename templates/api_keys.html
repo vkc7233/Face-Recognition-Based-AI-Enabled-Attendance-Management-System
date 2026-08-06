@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block page_title %}API keys & webhooks{% endblock %}
+{% block page_sub %}Programmatic access for ERP, payroll, dashboards{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">key</i></div>
+  <div class="ph-body">
+    <h5>REST API base: <code>/api/v1</code></h5>
+    <p>Pass <code>Authorization: Bearer fm_…</code>. Webhooks are signed with
+       <code>X-FaceMark-Signature: sha256=…</code> so receivers can verify
+       authenticity.</p>
+  </div>
+</div>
+
+{% if new_raw %}
+<div class="card surface mb-3" style="border-left:4px solid var(--success);">
+  <div class="surface-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <strong>New API key — copy it now, it won't be shown again</strong>
+      <span class="status-chip success"><span class="dot"></span> new</span>
+    </div>
+    <div class="d-flex gap-2">
+      <input class="form-control mono user-select-all" value="{{ new_raw }}" readonly id="newKeyVal">
+      <button class="btn btn-ghost" onclick="navigator.clipboard.writeText(document.getElementById('newKeyVal').value); window.toast('Key copied','success')">
+        <i class="material-icons md-16">content_copy</i> Copy
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface mb-3">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">vpn_key</i> Active keys</h5>
+        <span class="chip ghost">{{ keys|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Label</th><th>Scopes</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+          <tbody>
+            {% for k in keys %}
+            <tr>
+              <td><strong>{{ k.label }}</strong></td>
+              <td><span class="mono">{{ k.scopes }}</span></td>
+              <td><span class="mono">{{ k.created_at[:10] }}</span></td>
+              <td><span class="mono">{{ k.last_used or '—' }}</span></td>
+              <td class="text-end">
+                {% if not k.revoked %}
+                <form method="POST" class="d-inline" onsubmit="return confirm('Revoke this key?')">
+                  <input type="hidden" name="revoke" value="{{ k.id }}">
+                  <button class="btn btn-sm btn-danger-soft">Revoke</button>
+                </form>
+                {% else %}<span class="status-chip danger"><span class="dot"></span> revoked</span>{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">
+              <div class="empty">
+                <i class="material-icons-outlined">vpn_key_off</i>
+                <strong>No keys yet</strong>
+                <div>Create one below to start consuming the API.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="surface-body" style="border-top:1px solid var(--surface-line);">
+        <h6 class="mb-2 text-muted small text-uppercase">Create key</h6>
+        <form method="POST" class="row g-2">
+          <div class="col-md-5"><input name="label" class="form-control" placeholder="Label e.g. Payroll Sync" required></div>
+          <div class="col-md-5">
+            <select name="scopes" class="form-select">
+              <option value="read">read</option>
+              <option value="read,write">read + write</option>
+              <option value="admin">admin (full)</option>
+            </select>
+          </div>
+          <div class="col-md-2"><button class="btn btn-primary w-100">Create</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">webhook</i> Webhooks</h5>
+        <span class="chip ghost">{{ webhooks|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>URL</th><th>Events</th><th>Last</th><th></th></tr></thead>
+          <tbody>
+            {% for h in webhooks %}
+            <tr>
+              <td><span class="url-chip">{{ h.url }}</span></td>
+              <td><small>{{ h.events }}</small></td>
+              <td>
+                {% if h.last_status and h.last_status.startswith('http-2') %}
+                  <span class="status-chip success"><span class="dot"></span> {{ h.last_status }}</span>
+                {% elif h.last_status %}
+                  <span class="status-chip danger"><span class="dot"></span> {{ h.last_status }}</span>
+                {% else %}
+                  <span class="status-chip warn"><span class="dot"></span> never</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <form method="POST" action="{{ url_for('webhooks_admin') }}" class="d-inline">
+                  <input type="hidden" name="delete" value="{{ h.id }}">
+                  <button class="btn btn-sm btn-danger-soft">×</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">
+              <div class="empty">
+                <i class="material-icons-outlined">link_off</i>
+                <strong>No webhooks</strong>
+                <div>Add one below.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="surface-body" style="border-top:1px solid var(--surface-line);">
+        <h6 class="mb-2 text-muted small text-uppercase">Add webhook</h6>
+        <form method="POST" action="{{ url_for('webhooks_admin') }}">
+          <div class="fld">
+            <label>URL</label>
+            <input name="url" class="form-control" placeholder="https://your-erp/hooks/facemark" required>
+          </div>
+          <div class="fld">
+            <label>Events</label>
+            <input name="events" class="form-control" value="check_in,check_out"
+                   placeholder="csv: check_in,check_out,absent,visitor or *">
+          </div>
+          <div class="fld">
+            <label>Signing secret <span class="hint">(HMAC-SHA256)</span></label>
+            <input name="secret" class="form-control" placeholder="leave blank to disable signing">
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">add_link</i> Subscribe
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

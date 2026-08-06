@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block page_title %}Shifts{% endblock %}
+{% block page_sub %}Per-shift windows feed accurate late & overtime calculation{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">schedule</i></div>
+  <div class="ph-body">
+    <h5>{{ shifts|length }} shift{{ '' if shifts|length == 1 else 's' }} defined</h5>
+    <p>Days mask is Mon → Sun (e.g. <code>1111100</code> = Mon-Fri). Late and OT
+       are computed against the shift, not just the global work-start time.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">list_alt</i> Defined shifts</h5>
+        <span class="chip ghost">{{ shifts|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead>
+            <tr><th>Name</th><th>Window</th><th>Grace</th><th>Days</th><th>Scope</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for s in shifts %}
+            <tr>
+              <td><strong>{{ s.name }}</strong></td>
+              <td><span class="mono">{{ s.start_time }} → {{ s.end_time }}</span></td>
+              <td><span class="badge-soft badge">{{ s.grace_min }} min</span></td>
+              <td><span class="mono">{{ s.days_mask }}</span></td>
+              <td>
+                {% if s.branch_name %}<span class="chip">{{ s.branch_name }}</span>{% endif %}
+                {% if s.department_name %}<span class="chip ghost">{{ s.department_name }}</span>{% endif %}
+                {% if not s.branch_name and not s.department_name %}<span class="dept-chip">organisation-wide</span>{% endif %}
+              </td>
+              <td class="text-end">
+                <form method="POST" class="d-inline" onsubmit="return confirm('Delete shift?')">
+                  <input type="hidden" name="delete" value="{{ s.id }}">
+                  <button class="btn btn-sm btn-danger-soft">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">
+              <div class="empty">
+                <i class="material-icons-outlined">schedule</i>
+                <strong>No shifts yet</strong>
+                <div>Add Morning / General / Night patterns on the right.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_alarm</i> Add shift</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld">
+            <label>Name</label>
+            <input name="name" class="form-control" placeholder="Morning" required>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label">Start</label>
+              <input name="start_time" type="time" class="form-control" value="09:00" required>
+            </div>
+            <div class="col">
+              <label class="form-label">End</label>
+              <input name="end_time" type="time" class="form-control" value="18:00" required>
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label">Grace (min)</label>
+              <input name="grace_min" type="number" min="0" max="60" value="10" class="form-control">
+            </div>
+            <div class="col">
+              <label class="form-label">Days mask</label>
+              <input name="days_mask" class="form-control" value="1111100">
+            </div>
+          </div>
+          <div class="fld">
+            <label>Branch</label>
+            <select name="branch_id" class="form-select">
+              <option value="">All branches</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Department</label>
+            <select name="department_id" class="form-select">
+              <option value="">All departments</option>
+              {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">add</i> Add shift
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

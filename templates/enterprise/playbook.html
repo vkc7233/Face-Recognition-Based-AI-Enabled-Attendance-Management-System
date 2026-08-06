@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise Edition · GTM Playbook{% endblock %}
+{% block page_title %}Go-To-Market & Sales Playbook{% endblock %}
+{% block page_sub %}Five personas · five one-liners · five objections handled · 90-second demo{% endblock %}
+{% block content %}
+
+<div class="page-stripe"></div>
+
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">menu_book</i></div>
+  <div class="ph-body">
+    <h5>How to position FaceMark so a corporate/IT buyer sees no real alternative</h5>
+    <p>Use this page in pre-call prep. Each persona has one sentence; each objection has one answer.</p>
+  </div>
+</div>
+
+{% set PERSONAS = [
+  ('CIO / IT Manager',  'admin_panel_settings', '#4f46e5',
+   'SSO, provisioning, integration, low admin',
+   '"Installs on your servers, signs in with Okta/Entra, and pushes attendance straight into your payroll."'),
+  ('CISO / Security',   'security', '#b91c1c',
+   'Data residency, spoofing, audit, breach risk',
+   '"Biometrics never leave your premises, encrypted with your own key, and it blocks deepfake clock-ins."'),
+  ('CHRO / HR Head',    'groups', '#047857',
+   'Payroll accuracy, hybrid work, analytics',
+   '"Accurate, proxy-proof hours for office, hybrid and field staff — with attrition and overtime insights."'),
+  ('Admin / Facilities','meeting_room', '#b45309',
+   'Visitors, occupancy, safety, multi-site',
+   '"One camera network for attendance, visitor management, space utilisation and evacuation roll-call."'),
+  ('CFO',               'attach_money', '#1f2937',
+   'Cost, ROI, no per-cloud lock-in',
+   '"Buy it once on-prem or pay per seat — a fraction of UKG/ADP with no overseas data risk."'),
+] %}
+
+<div class="row g-3">
+  {% for name, icon, color, cares, line in PERSONAS %}
+  <div class="col-lg-6">
+    <div class="card surface lift h-100">
+      <div class="card-body p-4">
+        <div class="d-flex gap-3 align-items-start">
+          <span style="width:48px;height:48px;border-radius:12px;background:{{ color }}1A;color:{{ color }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="material-icons-outlined" style="font-size:26px;">{{ icon }}</i>
+          </span>
+          <div style="flex:1;">
+            <h5 style="font-weight:800;letter-spacing:-0.015em;margin:0;">{{ name }}</h5>
+            <small class="text-muted">Cares about: {{ cares }}</small>
+          </div>
+        </div>
+        <div class="mt-3 p-3" style="background:#f7f8fb;border-left:3px solid {{ color }};border-radius:8px;font-style:italic;color:#1a2440;">
+          {{ line }}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card surface mt-3">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">play_circle</i> 90-second demo script</h5>
+    <span class="chip ghost">memorise this</span>
+  </div>
+  <div class="surface-body">
+    <ol style="font-size:1rem; line-height:1.7;">
+      <li>
+        <strong>Show a live proxy-proof clock-in</strong>, then try to fool it with a phone
+        photo/video — the gate rejects them. <em>(N5 deepfake + liveness)</em>
+      </li>
+      <li>
+        <strong>Sign in via the customer's own Okta/Entra</strong> from the same screen.
+        <em>(N1 SSO)</em>
+      </li>
+      <li>
+        <strong>Ask the AI Copilot</strong> "who was late this week?" and show the instant
+        answer. <em>(N13 Copilot)</em>
+      </li>
+      <li>
+        <strong>Click "sync to payroll"</strong> — the integration sends hours to their HRMS
+        in one shot. <em>(N15 connectors)</em>
+      </li>
+      <li>
+        Close on: <em>"all of this runs on your servers, your data never leaves the building."</em>
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div class="card surface mt-3">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">flag</i> Recommended first action</h5>
+  </div>
+  <div class="surface-body">
+    <p>
+      Build <strong>N1 (SSO)</strong> and assemble <strong>N4 (SOC2 / ISO evidence pack)</strong>
+      before anything else — they are low effort, unlock the corporate shortlist, and cost
+      you nothing in recognition R&D. Pair them with the <strong>N5 deepfake-liveness demo</strong>
+      and you have a corporate pitch no direct competitor can match this quarter.
+    </p>
+    <div class="d-flex gap-2 mt-3">
+      <a class="btn btn-primary" href="{{ url_for('enterprise.sso_admin') }}">
+        <i class="material-icons md-16">vpn_key</i> Configure SSO
+      </a>
+      <a class="btn btn-ghost" href="{{ url_for('enterprise.compliance_pack') }}">
+        <i class="material-icons md-16">verified</i> SOC2 evidence pack
+      </a>
+      <a class="btn btn-ghost" href="{{ url_for('enterprise.spoof_admin') }}">
+        <i class="material-icons md-16">shield</i> Deepfake events
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

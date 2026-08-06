@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block page_title %}Exam alerts{% endblock %}
+{% block page_sub %}Missing / imposter / phone-held events for invigilators{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('exams') }}" class="btn btn-ghost btn-sm mb-3">
+  <i class="material-icons md-16">arrow_back</i> Back to exams
+</a>
+
+<div class="card surface">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">warning</i> Alerts</h5>
+    <span class="chip ghost">{{ alerts|length }}</span>
+  </div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>When</th><th>Kind</th><th>Person</th><th>Detail</th></tr></thead>
+      <tbody>
+        {% for a in alerts %}
+        <tr>
+          <td><span class="mono">{{ a.seen_at }}</span></td>
+          <td>
+            {% if a.kind == 'imposter' %}<span class="status-chip danger"><span class="dot"></span> imposter</span>
+            {% elif a.kind == 'missing' %}<span class="status-chip warn"><span class="dot"></span> missing</span>
+            {% else %}<span class="status-chip"><span class="dot"></span> {{ a.kind }}</span>{% endif %}
+          </td>
+          <td><strong>{{ a.person_name or a.person_id }}</strong></td>
+          <td><small class="text-muted">{{ a.detail or '' }}</small></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">
+          <div class="empty">
+            <i class="material-icons-outlined">check_circle</i>
+            <strong>Clean run</strong>
+            <div>No exam alerts so far.</div>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

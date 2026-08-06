@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block page_title %}Weekly timetable{% endblock %}
+{% block page_sub %}Recurring periods auto-create class sessions every day{% endblock %}
+{% block content %}
+{% set DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">view_week</i></div>
+  <div class="ph-body">
+    <h5>{{ slots|length }} slot{{ '' if slots|length == 1 else 's' }}</h5>
+    <p>Click "Materialise" to generate today's class sessions from the timetable.
+       The nightly scheduler does this automatically at 00:10.</p>
+  </div>
+  <div class="ph-actions">
+    <form method="POST" action="{{ url_for('timetable_materialise') }}">
+      <button class="btn btn-primary">
+        <i class="material-icons md-16">play_circle</i> Materialise today
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">schedule</i> Slots</h5>
+        <span class="chip ghost">{{ slots|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead>
+            <tr><th>Day</th><th>Subject</th><th>Window</th><th>Room</th><th>Teacher</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for s in slots %}
+            <tr>
+              <td><span class="chip">{{ DAYS[s.weekday] }}</span></td>
+              <td>
+                <strong>{{ s.subject_name }}</strong>
+                {% if s.subject_code %}<div class="mono">{{ s.subject_code }}</div>{% endif %}
+              </td>
+              <td><span class="mono">{{ s.start_time }} → {{ s.end_time }}</span></td>
+              <td>{{ s.room or '—' }}</td>
+              <td>{{ s.teacher or '—' }}</td>
+              <td class="text-end">
+                <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
+                  <input type="hidden" name="delete" value="{{ s.id }}">
+                  <button class="btn btn-sm btn-danger-soft">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">
+              <div class="empty">
+                <i class="material-icons-outlined">event_note</i>
+                <strong>No timetable slots yet</strong>
+                <div>Add weekly slots on the right.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add</i> Add slot</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld">
+            <label>Subject</label>
+            <select name="subject_id" class="form-select" required>
+              <option value="">—</option>
+              {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }} {{ s.code or '' }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Day of week</label>
+            <select name="weekday" class="form-select">
+              {% for i in range(7) %}<option value="{{ i }}">{{ DAYS[i] }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label">Start</label>
+              <input name="start_time" type="time" class="form-control" required>
+            </div>
+            <div class="col">
+              <label class="form-label">End</label>
+              <input name="end_time" type="time" class="form-control" required>
+            </div>
+          </div>
+          <div class="fld">
+            <label>Room</label>
+            <input name="room" class="form-control" placeholder="Room 304">
+          </div>
+          <div class="fld">
+            <label>Teacher</label>
+            <input name="teacher" class="form-control">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col"><input name="active_from" type="date" class="form-control" placeholder="From"></div>
+            <div class="col"><input name="active_to"   type="date" class="form-control" placeholder="To"></div>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">save</i> Add slot
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

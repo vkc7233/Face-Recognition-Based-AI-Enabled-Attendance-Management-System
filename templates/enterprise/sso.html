@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · SSO{% endblock %}
+{% block page_title %}SSO providers (N1){% endblock %}
+{% block page_sub %}OIDC for Okta, Microsoft Entra ID, Google Workspace and any compliant IdP{% endblock %}
+{% block content %}
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">vpn_key</i></div>
+  <div class="ph-body">
+    <h5>Open the corporate IT gate</h5>
+    <p>Add a provider here, then go to <a href="{{ url_for('login') }}">/login</a> — your IdP will appear as a sign-in button. SCIM is configured separately.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface">
+      <div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">apps</i> Configured providers</h5><span class="chip ghost">{{ providers|length }}</span></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Kind</th><th>Domain</th><th>Default role</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for p in providers %}
+            <tr>
+              <td><strong>{{ p.name }}</strong></td>
+              <td><span class="badge-soft badge">{{ p.kind }}</span></td>
+              <td><span class="mono">{{ p.domain or '*' }}</span></td>
+              <td><span class="chip">{{ p.default_role }}</span></td>
+              <td>
+                {% if p._usable %}
+                  <span class="status-chip success"><span class="dot"></span> ready</span>
+                {% else %}
+                  <span class="status-chip warn" title="Missing or placeholder client_id / issuer / urls — hidden from login until fixed">
+                    <span class="dot"></span> needs config
+                  </span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if p._usable %}
+                <a class="btn btn-sm btn-soft-primary" href="{{ url_for('enterprise.sso_login', provider_id=p.id) }}">Test</a>
+                {% endif %}
+                <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
+                  <input type="hidden" name="delete" value="{{ p.id }}">
+                  <button class="btn btn-sm btn-danger-soft">×</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">login</i></div><strong>No SSO providers yet</strong><p>Add one on the right; the doc says start here before anything else.</p></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card surface">
+      <div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_circle</i> Add provider</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Kind (preset)</label>
+            <select name="kind" class="form-select">
+              <option value="google">google</option>
+              <option value="okta">okta</option>
+              <option value="entra">entra</option>
+              <option value="oidc">oidc (custom)</option>
+            </select>
+          </div>
+          <div class="fld"><label>Display name</label><input name="name" class="form-control" placeholder="Acme Corp · Okta" required></div>
+          <div class="fld"><label>Issuer URL <span class="hint">(Okta/Entra)</span></label><input name="issuer" class="form-control" placeholder="https://acme.okta.com/oauth2/default"></div>
+          <div class="fld"><label>Client ID</label><input name="client_id" class="form-control" required></div>
+          <div class="fld"><label>Client secret</label><input name="client_secret" type="password" class="form-control"></div>
+          <div class="fld"><label>Email domain whitelist <span class="hint">(optional)</span></label><input name="domain" class="form-control" placeholder="acme.com"></div>
+          <div class="fld"><label>Default role for new users</label>
+            <select name="default_role" class="form-select">
+              <option value="staff">staff</option>
+              <option value="teacher">teacher</option>
+              <option value="hr">hr</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w-100"><i class="material-icons md-16">save</i> Save provider</button>
+        </form>
+        <small class="text-muted d-block mt-2">Redirect URI to paste in your IdP: <code>{{ url_for('enterprise.sso_callback', provider_id=0, _external=True).replace('0', '<id>') }}</code></small>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

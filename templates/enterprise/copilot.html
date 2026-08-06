@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · AI Copilot{% endblock %}
+{% block page_title %}AI Workforce Copilot (N13){% endblock %}
+{% block page_sub %}Plain-English answers · attendance · setup help · feature guides{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">auto_awesome</i></div>
+  <div class="ph-body">
+    <h5>Ask anything — attendance numbers <em>or</em> "how do I…"</h5>
+    <p>
+      The Copilot answers <strong>both</strong> data questions ("who was late this week?")
+      <strong>and</strong> setup questions ("how do I add a branch?", "what is liveness?").
+      It tries to recognise plain English and falls back to friendly hints when it doesn't.
+    </p>
+  </div>
+</div>
+
+<div class="card surface">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">chat</i> Ask</h5>
+    <span class="chip ghost">Press Enter to ask</span>
+  </div>
+  <div class="surface-body">
+    <div class="input-prefix mb-3">
+      <i class="material-icons-outlined">search</i>
+      <input id="q" class="form-control form-control-lg"
+             placeholder="e.g. who was late today? · how do I enable liveness? · what is N5?" />
+    </div>
+
+    <div class="section-head">Attendance &amp; reports</div>
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <button class="btn btn-xs btn-soft-primary" data-ex="how many entries today?">how many entries today?</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="who was late this week?">who was late this week?</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="absent today">absent today</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="top 5 attenders this month">top 5 attenders</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="overtime trend last 14 days">overtime trend</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="average check-in time last week">avg check-in</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="attendance by department this month">by department</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="defaulters below 75%">defaulters</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="who is at risk">at-risk</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="who is burned out">burnout</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="whose birthday today">birthdays</button>
+      <button class="btn btn-xs btn-soft-primary" data-ex="how many unknown faces this week">visitors</button>
+    </div>
+
+    <div class="section-head">How do I…</div>
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I register a new user?">register a user</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I mark attendance?">mark attendance</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I enable liveness?">enable liveness</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I encrypt templates?">encrypt templates</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I set up SSO?">set up SSO</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I configure SCIM?">configure SCIM</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I stream audit to Splunk?">SIEM streaming</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I connect to payroll?">payroll connector</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I add a branch?">add a branch</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I define a shift?">define a shift</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I apply for leave?">apply for leave</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I run payroll?">run payroll</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I enable site mode?">site mode</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I deploy with docker?">deploy with docker</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I set up backup?">backup setup</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I erase a person?">erase a person</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I record consent?">record consent</button>
+      <button class="btn btn-xs btn-soft-amber" data-ex="how do I check health?">check health</button>
+    </div>
+
+    <div class="section-head">What is…</div>
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <button class="btn btn-xs btn-soft-success" data-ex="what is LBPH?">LBPH</button>
+      <button class="btn btn-xs btn-soft-success" data-ex="what is liveness?">liveness</button>
+      <button class="btn btn-xs btn-soft-success" data-ex="what is N1 SSO?">N1 SSO</button>
+      <button class="btn btn-xs btn-soft-success" data-ex="what is N5 deepfake detection?">N5 deepfake</button>
+      <button class="btn btn-xs btn-soft-success" data-ex="what is N13 copilot?">N13 copilot</button>
+      <button class="btn btn-xs btn-soft-success" data-ex="what can you do">what can you do</button>
+    </div>
+
+    <button id="ask" class="btn btn-primary">
+      <i class="material-icons md-16">send</i> Ask Copilot
+    </button>
+    <div id="result" class="mt-3"></div>
+  </div>
+</div>
+
+<div class="card surface mt-3">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">history</i> Recent questions</h5>
+  </div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>When</th><th>Actor</th><th>Question</th><th>Intent</th><th>Rows</th></tr></thead>
+      <tbody>
+        {% for r in recent %}
+        <tr>
+          <td><span class="mono small">{{ r.answered_at }}</span></td>
+          <td>{{ r.actor or '—' }}</td>
+          <td>{{ r.question }}</td>
+          <td><span class="badge-soft badge">{{ r.intent or '—' }}</span></td>
+          <td>{{ r.rows_out or 0 }}</td>
+        </tr>
+        {% else %}<tr><td colspan="5" class="text-center text-muted py-3">Ask a question above.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+const q = document.getElementById('q');
+const out = document.getElementById('result');
+
+function esc(s) {
+  return (s == null ? '' : String(s))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderSteps(steps) {
+  if (!steps || !steps.length) return '';
+  return '<ol class="checklist">' +
+    steps.map(s => `<li>${esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</li>`).join('') +
+    '</ol>';
+}
+
+function renderLinks(links) {
+  if (!links || !links.length) return '';
+  return '<div class="d-flex gap-2 flex-wrap mt-3">' +
+    links.map(l =>
+      `<a class="btn btn-sm btn-soft-primary" href="${esc(l.href)}">
+         <i class="material-icons md-16">open_in_new</i> ${esc(l.label)}
+       </a>`).join('') +
+    '</div>';
+}
+
+function renderTable(columns, rows) {
+  if (!rows || !rows.length) return '<div class="text-muted small mt-2">No matching rows.</div>';
+  let html = '<table class="table table-density-tight mt-2"><thead><tr>';
+  columns.forEach(c => html += `<th>${esc(c)}</th>`);
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    html += '<tr>';
+    columns.forEach(c => html += `<td>${esc(row[c])}</td>`);
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderSuggestions(list) {
+  if (!list || !list.length) return '';
+  return '<div class="mt-3"><small class="text-muted">Try one of these instead:</small><div class="d-flex gap-2 flex-wrap mt-2">' +
+    list.map(s =>
+      `<button class="btn btn-xs btn-soft-primary" data-ex="${esc(s)}">${esc(s)}</button>`).join('') +
+    '</div></div>';
+}
+
+function ask() {
+  if (!q.value.trim()) return;
+  out.innerHTML = '<div class="empty-soft py-3"><div class="empty-icon"><i class="material-icons-outlined">hourglass_top</i></div>Thinking…</div>';
+  const fd = new FormData();
+  fd.append('q', q.value);
+  fetch('{{ url_for("enterprise.copilot_ask") }}', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(j => {
+      let html = '';
+      if (!j.ok) {
+        html = `
+          <div class="alert alert-warning">
+            <i class="material-icons-outlined">info</i>
+            <div><strong>${esc(j.summary)}</strong></div>
+          </div>
+          ${renderSuggestions(j.suggestions)}
+        `;
+      } else if (j.kind === 'kb') {
+        html = `
+          <div class="alert" style="background:#eef2ff;color:#3730a3;">
+            <i class="material-icons-outlined">school</i>
+            <div><strong>${esc(j.title)}</strong></div>
+          </div>
+          ${renderSteps(j.steps)}
+          ${renderLinks(j.links)}
+        `;
+      } else if (j.kind === 'sql') {
+        html = `
+          <div class="alert" style="background:#ecfdf5;color:#065f46;">
+            <i class="material-icons-outlined">check_circle</i>
+            <div><strong>${esc(j.summary)}</strong></div>
+          </div>
+          ${renderTable(j.columns, j.rows)}
+        `;
+      } else {
+        html = `<div class="alert alert-warning">${esc(j.summary)}</div>`;
+      }
+      out.innerHTML = html;
+      // Re-bind the new suggestion chips
+      out.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', () => {
+        q.value = b.dataset.ex; ask();
+      }));
+    })
+    .catch(e => {
+      out.innerHTML = `<div class="alert alert-danger">Network error: ${esc(e)}</div>`;
+    });
+}
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { q.value = b.dataset.ex; ask(); }));
+document.getElementById('ask').addEventListener('click', ask);
+q.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+</script>
+{% endblock %}

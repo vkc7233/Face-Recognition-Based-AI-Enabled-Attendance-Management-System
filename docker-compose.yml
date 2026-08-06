@@ -1,0 +1,29 @@
+version: "3.9"
+
+# One-command deploy:  docker compose up -d
+#
+# The first run seeds the admin user (admin / admin123). Change the password
+# immediately in Settings. Persisted state lives in the named volume `data`.
+
+services:
+  facemark:
+    build: .
+    image: facemark:latest
+    container_name: facemark
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      FACEMARK_SECRET: ${FACEMARK_SECRET:-change-me-in-production}
+    volumes:
+      - data:/data
+
+  # Uncomment to put nginx in front for HTTPS / multi-instance scaling.
+  # nginx:
+  #   image: nginx:alpine
+  #   ports: ["443:443", "80:80"]
+  #   volumes: [./nginx.conf:/etc/nginx/conf.d/default.conf]
+  #   depends_on: [facemark]
+
+volumes:
+  data:

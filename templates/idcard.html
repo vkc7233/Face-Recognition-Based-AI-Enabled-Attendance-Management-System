@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ID Card — {{ person.name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style nonce="{{ csp_nonce() }}">
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#f1f5f9;padding:30px;display:flex;flex-direction:column;align-items:center;gap:20px}
+    .toolbar{display:flex;gap:8px}
+    .toolbar button,.toolbar a{
+      padding:8px 16px;border-radius:8px;border:1px solid #cbd5e1;background:white;
+      color:#0f172a;text-decoration:none;font-weight:600;font-size:0.9rem;cursor:pointer;
+    }
+    .toolbar button:hover,.toolbar a:hover{background:#eef2ff;border-color:#6366f1}
+
+    .id-card{
+      width:340px;height:540px;border-radius:18px;overflow:hidden;
+      background:white;box-shadow:0 25px 50px -15px rgba(15,23,42,0.4);
+      position:relative;
+    }
+    .id-banner{
+      background:linear-gradient(135deg,#6366f1,#a855f7);
+      color:white;padding:18px 20px 12px;display:flex;align-items:center;gap:10px;
+    }
+    .id-banner .mark{
+      width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.2);
+      display:flex;align-items:center;justify-content:center;font-weight:800;
+    }
+    .id-banner h1{font-size:1.1rem;font-weight:800;letter-spacing:-0.01em;line-height:1.1}
+    .id-banner p{font-size:0.72rem;opacity:0.85;letter-spacing:0.06em;text-transform:uppercase}
+
+    .id-photo-wrap{
+      display:flex;justify-content:center;padding:24px 20px 14px;
+    }
+    .id-photo{
+      width:130px;height:130px;border-radius:50%;
+      background:#eef2ff;color:#4338ca;
+      display:flex;align-items:center;justify-content:center;
+      font-size:50px;font-weight:800;
+      border:4px solid #eef2ff;
+      box-shadow:0 8px 24px -10px rgba(99,102,241,0.5);
+      overflow:hidden;
+    }
+    .id-photo img{width:100%;height:100%;object-fit:cover}
+
+    .id-name{font-size:1.4rem;font-weight:800;text-align:center;color:#0f172a;letter-spacing:-0.01em}
+    .id-role{font-size:0.85rem;text-align:center;color:#475569;margin-top:2px;letter-spacing:0.04em;text-transform:uppercase}
+
+    .id-grid{
+      display:grid;grid-template-columns:auto 1fr;gap:4px 14px;
+      padding:18px 28px 8px;font-size:0.84rem;color:#475569;
+    }
+    .id-grid b{color:#0f172a;font-weight:600;font-family:'JetBrains Mono',monospace}
+    .id-grid div:nth-child(odd){color:#94a3b8;text-transform:uppercase;font-size:0.7rem;letter-spacing:0.08em;align-self:center}
+
+    .id-foot{
+      position:absolute;bottom:0;left:0;right:0;
+      padding:14px 18px;display:flex;align-items:center;gap:14px;
+      background:linear-gradient(180deg,transparent,rgba(99,102,241,0.06));
+      border-top:1px dashed #e2e8f0;
+    }
+    #qr canvas, #qr img{width:80px;height:80px;border-radius:6px}
+    .id-foot-body{font-size:0.7rem;color:#64748b;line-height:1.4}
+    .id-foot-body b{color:#0f172a;font-weight:700}
+
+    @media print {
+      body{background:white;padding:0}
+      .toolbar{display:none}
+      .id-card{box-shadow:none;page-break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button onclick="window.print()">🖨 Print this card</button>
+  <a href="/listusers">← Back to users</a>
+</div>
+
+<div class="id-card">
+  <div class="id-banner">
+    <div class="mark">F</div>
+    <div>
+      <h1>{{ person.department_name or 'Member' }}</h1>
+      <p>Identity Card · {{ person.created_at[:4] if person.created_at else '' }}</p>
+    </div>
+  </div>
+
+  <div class="id-photo-wrap">
+    <div class="id-photo">
+      <img src="/static/profiles/{{ person.person_id }}.jpg" onerror="this.outerHTML='{{ person.name[:1] | upper }}'">
+    </div>
+  </div>
+
+  <div class="id-name">{{ person.name }}</div>
+  <div class="id-role">Roll No · #{{ person.person_id }}</div>
+
+  <div class="id-grid">
+    <div>Department</div><b>{{ person.department_name or '—' }}</b>
+    <div>Email</div><b>{{ person.email or '—' }}</b>
+    <div>D.O.B.</div><b>{{ person.date_of_birth or '—' }}</b>
+    <div>Enrolled</div><b>{{ person.created_at[:10] if person.created_at else '—' }}</b>
+  </div>
+
+  <div class="id-foot">
+    <div id="qr"></div>
+    <div class="id-foot-body">
+      Scan to verify identity.<br>
+      <b>{{ org_name }}</b><br>
+      If found, please return.
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce() }}">
+  // Use the relative URL of the profile page as QR payload
+  const payload = window.location.origin + '/user/{{ person.person_id }}';
+  QRCode.toCanvas(document.createElement('canvas'), payload, { width: 160, margin: 1 }, (err, c) => {
+    if (!err) document.getElementById('qr').appendChild(c);
+  });
+</script>
+</body>
+</html>

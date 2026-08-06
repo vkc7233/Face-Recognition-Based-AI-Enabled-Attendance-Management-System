@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block page_title %}Route stops{% endblock %}
+{% block page_sub %}Order, name and (optionally) geolocate every stop{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <a href="{{ url_for('transport') }}" class="btn btn-ghost btn-sm">
+    <i class="material-icons md-16">arrow_back</i> Back to routes
+  </a>
+  <span class="chip ghost">Route #{{ rid }}</span>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">place</i> Stops</h5>
+        <span class="chip ghost">{{ stops|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>#</th><th>Name</th><th>Lat, Lng</th></tr></thead>
+          <tbody>
+            {% for s in stops %}
+            <tr>
+              <td><span class="id-badge">{{ s.seq }}</span></td>
+              <td><strong>{{ s.name }}</strong></td>
+              <td><span class="mono">{% if s.lat %}{{ '%.5f'|format(s.lat) }}, {{ '%.5f'|format(s.lng) }}{% else %}—{% endif %}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">
+              <div class="empty">
+                <i class="material-icons-outlined">add_location_alt</i>
+                <strong>No stops yet</strong>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_location</i> Add stop</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="row g-2">
+            <div class="col-3">
+              <label class="form-label">Order</label>
+              <input name="seq" type="number" class="form-control" required>
+            </div>
+            <div class="col-9">
+              <label class="form-label">Name</label>
+              <input name="name" class="form-control" placeholder="Mahatma Phule Mandai" required>
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col">
+              <label class="form-label">Latitude</label>
+              <input name="lat" type="number" step="any" class="form-control">
+            </div>
+            <div class="col">
+              <label class="form-label">Longitude</label>
+              <input name="lng" type="number" step="any" class="form-control">
+            </div>
+          </div>
+          <button class="btn btn-primary w-100 mt-3">
+            <i class="material-icons md-16">add</i> Add stop
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

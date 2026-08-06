@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block page_title %}Cameras{% endblock %}
+{% block page_sub %}USB / RTSP / HTTP feeds across the organisation{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">videocam</i></div>
+  <div class="ph-body">
+    <h5>{{ cameras|length }} camera{{ '' if cameras|length == 1 else 's' }} registered</h5>
+    <p>Each camera has a purpose: <code>attendance</code>, <code>door</code>,
+       <code>site_gate</code> or <code>exam</code>. The recognise loop reads
+       the currently selected camera URL.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">camera_indoor</i> Registered cameras</h5>
+        <span class="chip ghost">{{ cameras|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>URL</th><th>Branch</th><th>Purpose</th><th>State</th><th></th></tr></thead>
+          <tbody>
+            {% for c in cameras %}
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <span class="avatar"><i class="material-icons md-18">videocam</i></span>
+                  <strong>{{ c.name }}</strong>
+                </div>
+              </td>
+              <td><span class="url-chip">{{ c.url[:60] }}{% if c.url|length > 60 %}…{% endif %}</span></td>
+              <td>{{ c.branch_name or '—' }}</td>
+              <td><span class="badge-soft badge">{{ c.purpose }}</span></td>
+              <td>
+                {% if c.enabled %}<span class="status-chip success"><span class="dot"></span> on</span>
+                {% else %}<span class="status-chip"><span class="dot"></span> off</span>{% endif %}
+              </td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-ghost"
+                   href="{{ url_for('cameras_feed', cid=c.id) }}" target="_blank">
+                  <i class="material-icons md-16">play_circle</i> View
+                </a>
+                <form method="POST" class="d-inline">
+                  <input type="hidden" name="toggle" value="{{ c.id }}">
+                  <button class="btn btn-sm btn-ghost">Toggle</button>
+                </form>
+                <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
+                  <input type="hidden" name="delete" value="{{ c.id }}">
+                  <button class="btn btn-sm btn-danger-soft">×</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">
+              <div class="empty">
+                <i class="material-icons-outlined">videocam_off</i>
+                <strong>No cameras registered</strong>
+                <div>Add the first one on the right.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_a_photo</i> Add camera</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld">
+            <label>Label</label>
+            <input name="name" class="form-control" placeholder="Main gate" required>
+          </div>
+          <div class="fld">
+            <label>URL</label>
+            <input name="url" class="form-control"
+                   placeholder="rtsp://user:pass@cam/Streaming/Channels/101 or 0 for USB" required>
+          </div>
+          <div class="fld">
+            <label>Branch</label>
+            <select name="branch_id" class="form-select">
+              <option value="">All branches</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Purpose</label>
+            <select name="purpose" class="form-select">
+              <option value="attendance">attendance</option>
+              <option value="door">door / access</option>
+              <option value="site_gate">site gate</option>
+              <option value="exam">exam invigilation</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">add</i> Add camera
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

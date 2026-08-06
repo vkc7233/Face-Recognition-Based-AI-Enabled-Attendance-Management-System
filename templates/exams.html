@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block page_title %}Exam mode{% endblock %}
+{% block page_sub %}Continuous-presence verification for secure sittings{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-rose">
+  <div class="ph-icn"><i class="material-icons">quiz</i></div>
+  <div class="ph-body">
+    <h5>Continuous re-check</h5>
+    <p>While an exam is active, the recogniser checks every <em>check_every_sec</em>
+       seconds that each expected person is still in view. Missing or imposter
+       sightings raise an alert with a timestamp.</p>
+  </div>
+</div>
+
+{% if active %}
+<div class="active-session-banner mb-3">
+  <div class="asb-pulse"></div>
+  <div class="asb-body">
+    <div class="asb-label">Active exam</div>
+    <div class="asb-title">{{ active.name }} <small style="opacity:.7;">until {{ active.end_at }}</small></div>
+  </div>
+  <form method="POST">
+    <input type="hidden" name="end" value="{{ active.id }}">
+    <button class="btn btn-danger-soft btn-sm">End now</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">event_note</i> Past & upcoming exams</h5>
+        <span class="chip ghost">{{ exams|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Window</th><th>Branch</th><th>Dept</th><th></th></tr></thead>
+          <tbody>
+            {% for e in exams %}
+            <tr>
+              <td>
+                <strong>{{ e.name }}</strong>
+                {% if e.active %}<span class="badge-soft-emerald badge ms-1">active</span>{% endif %}
+              </td>
+              <td><span class="mono">{{ e.start_at }} → {{ e.end_at }}</span></td>
+              <td>{{ e.branch_name or '—' }}</td>
+              <td>{{ e.department_name or '—' }}</td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-ghost" href="{{ url_for('exam_detail', eid=e.id) }}">
+                  <i class="material-icons md-16">notifications</i> Alerts
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">
+              <div class="empty">
+                <i class="material-icons-outlined">school</i>
+                <strong>No exams scheduled</strong>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_task</i> Schedule exam</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Name</label><input name="name" class="form-control" placeholder="Final Mathematics" required></div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label">Start</label>
+              <input name="start_at" type="datetime-local" class="form-control" required>
+            </div>
+            <div class="col">
+              <label class="form-label">End</label>
+              <input name="end_at" type="datetime-local" class="form-control" required>
+            </div>
+          </div>
+          <div class="fld">
+            <label>Check every (seconds) <span class="hint">10-600</span></label>
+            <input name="check_every_sec" type="number" min="10" max="600" value="60" class="form-control">
+          </div>
+          <div class="fld">
+            <label>Branch</label>
+            <select name="branch_id" class="form-select">
+              <option value="">All branches</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Department / class</label>
+            <select name="department_id" class="form-select">
+              <option value="">All departments</option>
+              {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">play_circle</i> Create exam
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="{{ lang or 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ person.name }} — Parent meeting pack</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style nonce="{{ csp_nonce() }}">
+    body {
+      font-family: 'Inter', sans-serif; color:#0f172a;
+      background: #f6f7fb; padding: 28px 18px;
+    }
+    .pack {
+      max-width: 920px; margin: 0 auto;
+      background: #fff; padding: 32px 36px;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px -16px rgba(15,23,42,0.18);
+    }
+    .head {
+      display:flex; justify-content:space-between; align-items:flex-end;
+      border-bottom: 2px solid #1f2c5b;
+      padding-bottom: 14px; margin-bottom: 22px;
+    }
+    .head h2 { margin: 0; font-weight: 800; letter-spacing: -0.02em; }
+    .head small.org { color: #6366f1; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; font-size: 0.78rem; }
+
+    .stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 22px; }
+    .stat {
+      background: #f7f8fb; border: 1px solid #eef0f6; border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .stat .lbl { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; color: #64748b; font-weight: 700; }
+    .stat .val { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+
+    h5 { font-weight: 800; letter-spacing: -0.01em; margin-top: 22px; margin-bottom: 10px; }
+    .table { font-size: 0.92rem; }
+    .table th { background: #f7f8fb; color: #475569; text-transform: uppercase; font-weight: 600; font-size: 0.74rem; letter-spacing: 0.06em; }
+    .table td, .table th { padding: 8px 10px; border-color: #eef0f6; }
+    .badge-soft        { background: #eef2ff; color: #4338ca; }
+    .badge-soft-rose   { background: #fef2f2; color: #b91c1c; }
+    .badge-soft-emerald{ background: #ecfdf5; color: #065f46; }
+    .badge-soft-amber  { background: #fffbeb; color: #b45309; }
+    .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 12px; }
+
+    @media print {
+      body { padding: 0; background: #fff; }
+      .pack { box-shadow: none; padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="pack">
+
+  <div class="head">
+    <div>
+      <small class="org">{{ org_name }}</small>
+      <h2>{{ person.name }}</h2>
+      <small class="text-muted">
+        #{{ person.person_id }} · {{ person.department_name or 'no department' }}
+      </small>
+    </div>
+    <div class="no-print">
+      <button class="btn btn-outline-primary btn-sm" onclick="window.print()">
+        <i class="material-icons-outlined" style="font-size:16px; vertical-align:-3px;">print</i> Print
+      </button>
+      <a class="btn btn-link btn-sm" href="{{ url_for('user_detail', pid=person.person_id) }}">Back to profile</a>
+    </div>
+  </div>
+
+  <div class="stat-strip">
+    <div class="stat"><div class="lbl">Total days</div><div class="val">{{ total_days }}</div></div>
+    <div class="stat"><div class="lbl">Present</div><div class="val" style="color:#047857;">{{ present }}</div></div>
+    <div class="stat"><div class="lbl">Late</div><div class="val" style="color:#b45309;">{{ late }}</div></div>
+    <div class="stat"><div class="lbl">Attendance %</div><div class="val" style="color:#4338ca;">{{ pct }}<small>%</small></div></div>
+  </div>
+
+  {% if risks %}
+  <div class="alert-warning p-3 mb-4">
+    <strong>At-risk:</strong> recent 14-day attendance is
+    {{ risks[0].recent_pct }}% vs prior {{ risks[0].prior_pct }}% — a drop of
+    <strong>{{ risks[0].drop_pct }}%</strong>. Recommend a parent meeting.
+  </div>
+  {% endif %}
+
+  <h5>Per-subject defaulter view</h5>
+  <table class="table">
+    <thead><tr><th>Subject</th><th>Attended</th><th>Held</th><th>%</th></tr></thead>
+    <tbody>
+      {% for s in subject_rows %}
+      <tr>
+        <td>
+          <strong>{{ s.subject_name }}</strong>
+          {% if s.subject_code %} <small class="text-muted">· {{ s.subject_code }}</small>{% endif %}
+        </td>
+        <td>{{ s.attended }}</td>
+        <td>{{ s.held }}</td>
+        <td>
+          {% if s.pct >= 75 %}<span class="badge-soft-emerald badge">{{ s.pct }}%</span>
+          {% else %}<span class="badge-soft-rose badge">{{ s.pct }}%</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="4" class="text-muted text-center py-3">No subject data.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <h5>Leave history</h5>
+  <table class="table">
+    <thead><tr><th>Type</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for l in leaves %}
+      <tr>
+        <td><span class="badge-soft badge">{{ l.leave_type }}</span></td>
+        <td>{{ l.start_date }}</td>
+        <td>{{ l.end_date }}</td>
+        <td>
+          {% if l.status == 'approved' %}<span class="badge-soft-emerald badge">approved</span>
+          {% elif l.status == 'rejected' %}<span class="badge-soft-rose badge">rejected</span>
+          {% else %}<span class="badge-soft-amber badge">{{ l.status }}</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="4" class="text-muted text-center py-3">No leave records.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  <h5>90-day attendance log</h5>
+  <table class="table">
+    <thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><code>{{ r.date }}</code></td>
+        <td>{{ r.check_in or '—' }}</td>
+        <td>{{ r.check_out or '—' }}</td>
+        <td>
+          {% if r.is_late %}<span class="badge-soft-amber badge">late</span>
+          {% elif r.check_in %}<span class="badge-soft-emerald badge">present</span>
+          {% else %}<span class="badge-soft-rose badge">absent</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="text-muted small text-center mt-4">
+    Generated {{ datetoday2 }} · {{ org_name }} — for PTA / parent meeting use.
+  </p>
+
+</div>
+</body>
+</html>

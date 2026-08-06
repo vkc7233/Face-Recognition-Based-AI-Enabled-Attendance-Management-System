@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.git/
+docs/*.pdf
+facemark.db
+static/faces/*
+static/profiles/*
+static/visitors/*
+static/ppe/*
+*.log

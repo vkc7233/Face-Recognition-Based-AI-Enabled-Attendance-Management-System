@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Audit log · {{ org_name }}{% endblock %}
+{% block page_title %}Audit log{% endblock %}
+{% block page_sub %}A record of admin actions for compliance and review.{% endblock %}
+
+{% block content %}
+<div class="card surface">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">policy</i> Recent activity</h5>
+    <span class="chip">{{ entries | length }} entries</span>
+  </div>
+  <div class="surface-body p-0">
+    <div class="table-responsive">
+      <table class="table table-clean mb-0">
+        <thead>
+          <tr><th style="width:200px">When</th><th style="width:140px">Actor</th><th style="width:180px">Action</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+          {% if entries %}
+            {% for e in entries %}
+              <tr>
+                <td class="mono small">{{ e.created_at }}</td>
+                <td>
+                  {% if e.actor %}
+                    <div class="user-cell">
+                      <span class="avatar">{{ e.actor[:1] | upper }}</span>
+                      <span>{{ e.actor }}</span>
+                    </div>
+                  {% else %}
+                    <span class="text-muted">system</span>
+                  {% endif %}
+                </td>
+                <td><span class="chip">{{ e.action }}</span></td>
+                <td class="small text-muted">{{ e.detail or '—' }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4" class="empty">
+              <i class="material-icons-outlined">manage_history</i>
+              <span>No audit entries yet.</span>
+            </td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

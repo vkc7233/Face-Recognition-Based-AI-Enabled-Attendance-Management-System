@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Visitor log · {{ org_name }}{% endblock %}
+{% block page_title %}Visitor log{% endblock %}
+{% block page_sub %}Every unknown face captured by the camera, with timestamp — for entrance security.{% endblock %}
+
+{% block content %}
+<div class="card surface">
+  <div class="surface-head">
+    <div class="d-flex align-items-center gap-2">
+      <i class="material-icons" style="color:#ef4444">no_accounts</i>
+      <h5 class="m-0">Unknown faces</h5>
+      <span class="chip">{{ visitors | length }}</span>
+    </div>
+    <form method="POST" action="{{ url_for('visitors_clear') }}" onsubmit="return confirm('Clear the entire visitor log? This deletes saved snapshots.')">
+      <button class="btn btn-danger-soft btn-sm">
+        <i class="material-icons md-16">delete_sweep</i> Clear log
+      </button>
+    </form>
+  </div>
+  <div class="surface-body">
+    {% if visitors %}
+      <div class="visitor-grid">
+        {% for v in visitors %}
+          <div class="visitor-card">
+            <img src="{{ url_for('static', filename=v.snapshot) }}" alt="visitor">
+            <div class="visitor-body">
+              <div class="visitor-time mono">{{ v.seen_at[11:19] }}</div>
+              <div class="visitor-date">{{ v.seen_at[:10] }}</div>
+              <div class="visitor-cam">
+                <i class="material-icons-outlined md-16">videocam</i>
+                {{ v.camera or 'unknown camera' }}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <i class="material-icons-outlined">verified_user</i>
+        <span>No unknown faces seen recently — your space is secure.</span>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<p class="small text-muted mt-3">
+  <i class="material-icons-outlined md-16">info</i>
+  Snapshots are saved only when a face is detected but doesn't match anyone in the database.
+  One snapshot per 30 seconds prevents storage flooding.
+</p>
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}Users · {{ org_name }}{% endblock %}
+{% block page_title %}Users{% endblock %}
+{% block page_sub %}Everyone enrolled in the recognition database.{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">group</i>
+          <h5 class="m-0">Registered users</h5>
+          <span class="chip">{{ persons | length }} total</span>
+        </div>
+        <form method="GET" class="d-flex gap-2">
+          <select name="dept" class="form-select form-select-sm">
+            <option value="">All classes</option>
+            {% for d in departments %}
+              <option value="{{ d.id }}" {% if selected_dept and selected_dept|int == d.id %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="search-box">
+            <i class="material-icons-outlined md-16">search</i>
+            <input class="bare" name="q" type="search" value="{{ q }}" placeholder="Search">
+          </div>
+          <button class="btn btn-ghost btn-sm">Filter</button>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('contacts_csv') }}" title="Export student + guardian contact list">
+            <i class="material-icons md-16">contact_mail</i> Contacts
+          </a>
+        </form>
+      </div>
+      <div class="surface-body p-0">
+        <div class="table-responsive">
+          <table class="table table-clean mb-0">
+            <thead>
+              <tr><th style="width:60px">#</th><th>Person</th><th>ID</th><th>Department</th><th>Email</th><th class="text-end">Actions</th></tr>
+            </thead>
+            <tbody>
+              {% if persons %}
+                {% for p in persons %}
+                  <tr>
+                    <td class="muted-num">{{ '%02d' % loop.index }}</td>
+                    <td>
+                      <a class="user-cell text-decoration-none text-reset" href="{{ url_for('user_detail', pid=p.person_id) }}">
+                        <img class="avatar-img" src="{{ url_for('static', filename='profiles/' ~ p.person_id ~ '.jpg') }}" onerror="this.outerHTML='<span class=\'avatar\'>{{ p.name[:1] | upper }}</span>'">
+                        <div>
+                          <div>{{ p.name }}</div>
+                          <small class="text-muted">Added {{ p.created_at[:10] if p.created_at else '' }}</small>
+                        </div>
+                      </a>
+                    </td>
+                    <td><span class="badge id-badge">#{{ p.person_id }}</span></td>
+                    <td><span class="dept-chip">{{ p.department_name or '—' }}</span></td>
+                    <td class="mono small">{{ p.email or '—' }}</td>
+                    <td class="text-end">
+                      <a class="btn btn-ghost btn-sm" target="_blank" href="{{ url_for('idcard', pid=p.person_id) }}" title="Print ID card">
+                        <i class="material-icons md-16">badge</i>
+                      </a>
+                      <button class="btn btn-ghost btn-sm edit-btn"
+                              data-bs-toggle="modal" data-bs-target="#editModal"
+                              data-pid="{{ p.person_id }}"
+                              data-name="{{ p.name }}"
+                              data-dept="{{ p.department_id or '' }}"
+                              data-email="{{ p.email or '' }}"
+                              data-dob="{{ p.date_of_birth or '' }}">
+                        <i class="material-icons md-16">edit</i>
+                      </button>
+                      <form method="POST" action="{{ url_for('manual_mark') }}" class="d-inline">
+                        <input type="hidden" name="person_id" value="{{ p.person_id }}">
+                        <input type="hidden" name="action" value="in">
+                        <button class="btn btn-success btn-sm" title="Manual check-in"><i class="material-icons md-16">check</i></button>
+                      </form>
+                      <a href="{{ url_for('delete_user', user=(p.name.replace(' ', '_') ~ '_' ~ p.person_id)) }}"
+                         onclick="return confirm('Delete {{ p.name }}?')"
+                         class="btn btn-danger-soft btn-sm">
+                        <i class="material-icons md-16">delete_outline</i>
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="6" class="empty">
+                  <i class="material-icons-outlined">group_off</i>
+                  <span>No users match your filter.</span>
+                </td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">upload_file</i> Bulk import</h5>
+      </div>
+      <div class="surface-body">
+        <form action="{{ url_for('import_users') }}" method="POST" enctype="multipart/form-data" class="vstack gap-3">
+          <p class="text-muted small mb-0">CSV columns: <code>name, id, department, email</code></p>
+          <input type="file" name="csv" accept=".csv" class="form-control" required>
+          <button class="btn btn-primary">
+            <i class="material-icons md-18">cloud_upload</i> Import
+          </button>
+          <div class="hint">
+            <span class="dot dot-indigo"></span> Imported users still need a face capture from the dashboard.
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card surface mt-4">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">school</i> Sample CSV</h5>
+      </div>
+      <div class="surface-body">
+<pre class="mono small mb-0" style="background:#f8fafc;padding:10px;border-radius:8px">
+name,id,department,email
+Aisha Khan,1042,Engineering,aisha@org.com
+Ravi Patel,1043,Operations,ravi@org.com
+</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───── Edit user modal ───── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="POST" action="{{ url_for('edit_user') }}">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="material-icons" style="color:#6366f1">edit</i> Edit user</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body vstack gap-3">
+        <input type="hidden" name="person_id" id="m_pid">
+        <div>
+          <label class="form-label">Full name</label>
+          <input class="form-control" name="name" id="m_name" required>
+        </div>
+        <div>
+          <label class="form-label">Department</label>
+          <select class="form-select" name="department_id" id="m_dept">
+            <option value="">— None —</option>
+            {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Email</label>
+          <input class="form-control" type="email" name="email" id="m_email">
+        </div>
+        <div>
+          <label class="form-label">Date of birth</label>
+          <input class="form-control" type="date" name="date_of_birth" id="m_dob">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary"><i class="material-icons md-16">save</i> Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('m_pid').value   = btn.dataset.pid;
+      document.getElementById('m_name').value  = btn.dataset.name;
+      document.getElementById('m_dept').value  = btn.dataset.dept;
+      document.getElementById('m_email').value = btn.dataset.email;
+      document.getElementById('m_dob').value   = btn.dataset.dob;
+    });
+  });
+</script>
+{% endblock %}

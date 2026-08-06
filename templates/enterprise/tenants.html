@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · Tenants{% endblock %}
+{% block page_title %}Multi-tenant control plane (N17){% endblock %}
+{% block page_sub %}One install, many customer orgs — the backbone for selling repeatedly{% endblock %}
+{% block content %}
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">hub</i></div>
+  <div class="ph-body"><h5>{{ tenants|length }} tenant{{ '' if tenants|length == 1 else 's' }}</h5></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">All tenants</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Slug</th><th>Plan</th><th>People</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for t in tenants %}
+            <tr>
+              <td><strong>{{ t.name }}</strong></td>
+              <td><span class="mono">{{ t.slug }}</span></td>
+              <td><span class="badge-soft badge">{{ t.plan }}</span></td>
+              <td><span class="mono">{{ t.people }}</span></td>
+              <td>{% if t.enabled %}<span class="status-chip success"><span class="dot"></span> on</span>{% else %}<span class="status-chip"><span class="dot"></span> off</span>{% endif %}</td>
+              <td class="text-end"><form method="POST" class="d-inline"><input type="hidden" name="delete" value="{{ t.id }}"><button class="btn btn-sm btn-danger-soft">×</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="6"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">domain</i></div><strong>No tenants yet</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Add tenant</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Slug</label><input name="slug" class="form-control" pattern="[a-z0-9-]+" placeholder="acme" required></div>
+          <div class="fld"><label>Display name</label><input name="name" class="form-control" required></div>
+          <div class="fld"><label>Plan</label>
+            <select name="plan" class="form-select">
+              <option value="starter">Starter</option>
+              <option value="pro">Professional</option>
+              <option value="enterprise">Enterprise</option>
+              <option value="msp">MSP / white-label</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">Create tenant</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

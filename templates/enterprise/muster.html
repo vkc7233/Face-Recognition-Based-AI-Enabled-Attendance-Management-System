@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · Mustering{% endblock %}
+{% block page_title %}Emergency mustering (N8){% endblock %}
+{% block page_sub %}Live headcount during a fire drill or incident — safety teams pay for this{% endblock %}
+{% block content %}
+<div class="page-hero hero-rose">
+  <div class="ph-icn"><i class="material-icons">crisis_alert</i></div>
+  <div class="ph-body"><h5>Live evacuation roll-call</h5><p>Sample QR posters at every safe zone — staff scan to check in to the active drill.</p></div>
+</div>
+
+{% if active %}
+<div class="active-session-banner mb-3">
+  <div class="asb-pulse"></div>
+  <div class="asb-body">
+    <div class="asb-label">Active drill</div>
+    <div class="asb-title">{{ active.name }} · safe zone: {{ active.safe_zone or '—' }} · started {{ active.started_at[11:19] }}</div>
+  </div>
+  <form method="POST"><input type="hidden" name="end" value="{{ active.id }}"><button class="btn btn-danger-soft btn-sm">End drill</button></form>
+</div>
+
+<div class="stat-strip">
+  <div class="stat-tile accent"><div class="st-label">Expected on-site</div><div class="st-value">{{ status.total_expected }}</div></div>
+  <div class="stat-tile success"><div class="st-label">Accounted for</div><div class="st-value">{{ status.accounted|length }}</div></div>
+  <div class="stat-tile danger"><div class="st-label">Still missing</div><div class="st-value">{{ status.missing|length }}</div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0" style="color:#b91c1c;">Missing ({{ status.missing|length }})</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0 table-density-tight">
+          <tbody>
+            {% for p in status.missing %}
+            <tr><td><strong>{{ p.name }}</strong></td><td><span class="mono small">#{{ p.person_id }}</span></td></tr>
+            {% else %}<tr><td colspan="2" class="text-center text-muted py-3">Everyone accounted for. ✓</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0" style="color:#047857;">Accounted ({{ status.accounted|length }})</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0 table-density-tight">
+          <tbody>
+            {% for p in status.accounted %}
+            <tr><td><strong>{{ p.name }}</strong></td><td><span class="mono small">#{{ p.person_id }}</span></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card surface mb-3"><div class="surface-head"><h5 class="m-0">Start a drill</h5></div>
+  <div class="surface-body">
+    <form method="POST" class="row g-2">
+      <div class="col-md-4"><input name="name" class="form-control" placeholder="Fire drill 2026-06" required></div>
+      <div class="col-md-3">
+        <select name="branch_id" class="form-select"><option value="">All branches</option>{% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select>
+      </div>
+      <div class="col-md-3"><input name="safe_zone" class="form-control" placeholder="Safe zone label"></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100">Start</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card surface"><div class="surface-head"><h5 class="m-0">Past drills</h5></div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>Name</th><th>Branch</th><th>Started</th><th>Ended</th><th>Checked in</th></tr></thead>
+      <tbody>
+        {% for d in recent %}
+        <tr>
+          <td><strong>{{ d.name }}</strong></td>
+          <td>{{ d.branch_name or '—' }}</td>
+          <td><span class="mono small">{{ d.started_at }}</span></td>
+          <td><span class="mono small">{{ d.ended_at or '—' }}</span></td>
+          <td><span class="mono">{{ d.checked_in }}</span></td>
+        </tr>
+        {% else %}<tr><td colspan="5" class="text-center text-muted py-3">No drills yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

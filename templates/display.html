@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Display · {{ org_name }}</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <style nonce="{{ csp_nonce() }}">
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden;background:#000;color:#fff;
+              font-family:'Inter',sans-serif}
+    .wrap{
+      position:fixed;inset:0;
+      background:
+        radial-gradient(900px 600px at 20% 0%, rgba(99,102,241,0.4),transparent 60%),
+        radial-gradient(700px 700px at 100% 100%, rgba(16,185,129,0.3),transparent 60%),
+        linear-gradient(180deg,#0b1224,#000);
+      display:grid;grid-template-rows:auto 1fr auto;
+    }
+    .top{padding:30px 50px;display:flex;justify-content:space-between;align-items:center}
+    .brand{display:flex;align-items:center;gap:18px;font-size:2.2rem;font-weight:800}
+    .brand i{font-size:42px;color:#a5b4fc}
+    .clock{font-size:2.4rem;font-weight:800;letter-spacing:0.03em;font-variant-numeric:tabular-nums}
+    .clock small{display:block;font-size:1rem;font-weight:500;color:#94a3b8;text-align:right}
+
+    .center{
+      padding:0 50px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;
+    }
+    .big-stats{display:flex;flex-direction:column;gap:28px}
+    .big-stat{
+      background:linear-gradient(135deg,rgba(99,102,241,0.18),rgba(168,85,247,0.12));
+      border:1px solid rgba(165,180,252,0.25);
+      border-radius:28px;padding:36px 40px;
+    }
+    .big-stat.green{
+      background:linear-gradient(135deg,rgba(16,185,129,0.22),rgba(99,102,241,0.15));
+      border-color:rgba(16,185,129,0.35);
+    }
+    .big-stat .lbl{font-size:1.05rem;color:#cbd5e1;letter-spacing:0.06em;text-transform:uppercase}
+    .big-stat .val{font-size:7rem;font-weight:900;line-height:1;letter-spacing:-0.02em;margin-top:8px}
+    .big-stat .sub{margin-top:6px;color:#94a3b8;font-size:1.05rem}
+
+    .recent-pane{
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.07);
+      border-radius:28px;padding:30px 30px 10px;
+      display:flex;flex-direction:column;height:100%;
+    }
+    .recent-pane h3{
+      font-size:1.4rem;font-weight:800;letter-spacing:0.02em;margin-bottom:18px;
+      display:flex;align-items:center;gap:10px;color:#f1f5f9;
+    }
+    .recent-pane h3 i{color:#a5b4fc}
+    .recent-list{list-style:none;display:flex;flex-direction:column;gap:18px;flex:1;overflow:hidden}
+    .recent-list li{
+      display:flex;align-items:center;gap:16px;padding:8px 0;
+      border-bottom:1px dashed rgba(255,255,255,0.06);
+    }
+    .recent-list img{
+      width:54px;height:54px;border-radius:50%;object-fit:cover;
+      border:2px solid rgba(99,102,241,0.3);background:#1e293b;
+    }
+    .recent-list .nm{font-weight:700;font-size:1.3rem}
+    .recent-list .meta{font-size:0.95rem;color:#94a3b8}
+    .recent-list .time{margin-left:auto;font-weight:700;color:#a5b4fc;font-variant-numeric:tabular-nums;font-size:1.2rem}
+
+    .bottom{
+      padding:18px 50px;display:flex;justify-content:space-between;align-items:center;
+      color:#94a3b8;font-size:1rem;border-top:1px solid rgba(255,255,255,0.06)
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand">
+      <i class="material-icons">face_retouching_natural</i>
+      <span>{{ org_name }}</span>
+    </div>
+    <div class="clock">
+      <span id="clock">--:--:--</span>
+      <small id="dateStr"></small>
+    </div>
+  </div>
+
+  <div class="center">
+    <div class="big-stats">
+      <div class="big-stat green">
+        <div class="lbl">Present today</div>
+        <div class="val" id="present">{{ present_count }}</div>
+        <div class="sub">out of {{ total_reg }} registered</div>
+      </div>
+      <div class="big-stat">
+        <div class="lbl">Attendance rate</div>
+        <div class="val"><span id="ratePct">0</span><small style="font-size:3rem;color:#94a3b8">%</small></div>
+        <div class="sub">live across the campus</div>
+      </div>
+    </div>
+
+    <div class="recent-pane">
+      <h3><i class="material-icons">bolt</i> Latest arrivals</h3>
+      <ul class="recent-list" id="recentList">
+        <li style="color:#94a3b8;border:none;justify-content:center">Waiting for arrivals…</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <span>Live display — refreshes automatically</span>
+    <span id="footStat"></span>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce() }}">
+  function tick(){
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toLocaleTimeString([], { hour12:false });
+    document.getElementById('dateStr').textContent =
+      d.toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long' });
+  }
+  setInterval(tick, 1000); tick();
+
+  async function refresh(){
+    try {
+      const [s, r] = await Promise.all([
+        (await fetch('/api/stats')).json(),
+        (await fetch('/api/recent')).json(),
+      ]);
+      document.getElementById('present').textContent = s.present_today;
+      const rate = s.total_registered ? Math.floor(100 * s.present_today / s.total_registered) : 0;
+      document.getElementById('ratePct').textContent = rate;
+      document.getElementById('footStat').textContent =
+        s.late_today + ' late · ' + s.total_registered + ' enrolled';
+
+      const ul = document.getElementById('recentList');
+      const recent = r.recent || [];
+      if (recent.length === 0) {
+        ul.innerHTML = '<li style="color:#94a3b8;border:none;justify-content:center">Waiting for arrivals…</li>';
+        return;
+      }
+      ul.innerHTML = recent.slice(0,6).map(x => `
+        <li>
+          <img src="/static/profiles/${x.person_id}.jpg" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect fill=%22%23334155%22 width=%2264%22 height=%2264%22 rx=%2232%22/><text x=%2232%22 y=%2240%22 font-size=%2228%22 fill=%22white%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-weight=%22bold%22>${(x.person_name||'?')[0].toUpperCase()}</text></svg>'">
+          <div>
+            <div class="nm">${x.person_name || '#'+x.person_id}</div>
+            <div class="meta">${x.is_late ? 'Arrived LATE' : 'On time'}</div>
+          </div>
+          <div class="time">${(x.check_out || x.check_in || '').slice(0,5)}</div>
+        </li>`).join('');
+    } catch(e){}
+  }
+  setInterval(refresh, 3000); refresh();
+</script>
+</body>
+</html>

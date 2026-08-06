@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · Occupancy{% endblock %}
+{% block page_title %}Space & desk occupancy (N16){% endblock %}
+{% block page_sub %}Reuse the camera network for facilities — a second buyer inside the same account{% endblock %}
+{% block content %}
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">chair</i></div>
+  <div class="ph-body"><h5>{{ rooms|length }} room{{ '' if rooms|length == 1 else 's' }} registered</h5></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Rooms</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Branch</th><th>Kind</th><th>Capacity</th></tr></thead>
+          <tbody>
+            {% for r in rooms %}
+            <tr>
+              <td><strong>{{ r.name }}</strong></td>
+              <td>{{ r.branch_name or '—' }}</td>
+              <td><span class="badge-soft badge">{{ r.kind }}</span></td>
+              <td><span class="mono">{{ r.capacity }}</span></td>
+            </tr>
+            {% else %}<tr><td colspan="4"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">meeting_room</i></div><strong>No rooms yet</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Add room</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Name</label><input name="name" class="form-control" required></div>
+          <div class="fld"><label>Branch</label>
+            <select name="branch_id" class="form-select"><option value="">—</option>{% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="fld"><label>Kind</label>
+            <select name="kind" class="form-select"><option value="meeting">meeting</option><option value="desk">desk</option><option value="floor">floor</option></select>
+          </div>
+          <div class="fld"><label>Capacity</label><input name="capacity" type="number" min="0" class="form-control" value="0"></div>
+          <button class="btn btn-primary w-100">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

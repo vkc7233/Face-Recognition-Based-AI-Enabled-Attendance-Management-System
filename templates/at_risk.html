@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block page_title %}At-risk persons{% endblock %}
+{% block page_sub %}Recent 14-day drop ≥ 25% vs prior 14 days{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-amber">
+  <div class="ph-icn"><i class="material-icons">trending_down</i></div>
+  <div class="ph-body">
+    <h5>{{ rows|length }} likely defaulter{{ '' if rows|length == 1 else 's' }}</h5>
+    <p>The weekly digest emails this list to admins on Sunday at 20:00.
+       Click "Open profile" to message them or apply leave on their behalf.</p>
+  </div>
+</div>
+
+<div class="card surface">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">show_chart</i> At-risk</h5>
+    <span class="chip ghost">{{ rows|length }}</span>
+  </div>
+  <div class="surface-body p-0">
+    {% if rows %}
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Person</th><th>Recent</th><th>Prior</th>
+          <th style="width:30%;">Drop</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>
+            <div class="user-cell">
+              <span class="avatar">{{ r.name[0] | upper }}</span>
+              <div>
+                <strong>{{ r.name }}</strong>
+                <div class="mono">#{{ r.person_id }}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="status-chip warn"><span class="dot"></span> {{ r.recent_pct }}%</span></td>
+          <td><span class="status-chip success"><span class="dot"></span> {{ r.prior_pct }}%</span></td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height:8px;">
+                <div class="progress-bar bg-danger" style="width:{{ r.drop_pct }}%"></div>
+              </div>
+              <span class="badge-soft-rose badge">-{{ r.drop_pct }}%</span>
+            </div>
+          </td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-ghost" href="{{ url_for('user_detail', pid=r.person_id) }}">
+              <i class="material-icons md-16">person</i> Profile
+            </a>
+            <a class="btn btn-sm btn-primary" href="{{ url_for('parent_pack', pid=r.person_id) }}" target="_blank">
+              <i class="material-icons md-16">family_restroom</i> Parent pack
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty py-5">
+      <i class="material-icons-outlined">trending_flat</i>
+      <strong>No at-risk persons</strong>
+      <div>Everyone's attendance is steady. Nice.</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

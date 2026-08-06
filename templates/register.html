@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Capturing {{ name }} · FaceMark{% endblock %}
+{% block page_title %}Capturing samples{% endblock %}
+{% block page_sub %}Stay in frame — the model is learning your face.{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">videocam</i>
+          <h5 class="m-0">{{ name.replace('_', ' ') }}</h5>
+          <span class="chip">ID #{{ uid }}</span>
+        </div>
+        <a href="{{ url_for('home') }}" class="btn btn-ghost btn-sm">
+          <i class="material-icons md-16">close</i> Cancel
+        </a>
+      </div>
+      <div class="surface-body">
+        <div class="video-wrap">
+          <img src="{{ url_for('video_feed') }}?ts={{ uid }}" alt="">
+          <div class="video-corner"><span class="rec-dot"></span> CAPTURING</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface h-100">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">photo_camera</i>
+          <h5 class="m-0">Progress</h5>
+        </div>
+      </div>
+      <div class="surface-body">
+        <div class="capture-stats">
+          <div class="capture-num" id="capCount">0</div>
+          <div class="capture-of">of {{ target }} samples</div>
+        </div>
+        <div class="progress big mt-3">
+          <div id="capBar" class="progress-bar" style="width:0%"></div>
+        </div>
+
+        <ul class="checklist mt-4">
+          <li><i class="material-icons-outlined">light_mode</i> Use even, front-on lighting</li>
+          <li><i class="material-icons-outlined">visibility</i> Look at the camera, no glasses reflections</li>
+          <li><i class="material-icons-outlined">360</i> Turn head slightly left/right/up</li>
+          <li><i class="material-icons-outlined">verified</i> The page advances automatically when done</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce() }}">
+  const target = {{ target }};
+  let last = -1;
+  async function poll() {
+    try {
+      const r = await fetch('/capture_status');
+      const j = await r.json();
+      if (j.count !== last) {
+        document.getElementById('capCount').textContent = j.count;
+        document.getElementById('capBar').style.width = Math.round(100 * j.count / target) + '%';
+        last = j.count;
+      }
+      if (j.mode === null && j.count >= target) {
+        window.location.href = '{{ url_for("home") }}';
+        return;
+      }
+    } catch (e) {}
+    setTimeout(poll, 500);
+  }
+  poll();
+</script>
+{% endblock %}

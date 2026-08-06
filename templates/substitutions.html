@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block page_title %}Substitutions{% endblock %}
+{% block page_sub %}Reassign a class period to a substitute teacher{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">swap_horiz</i></div>
+  <div class="ph-body">
+    <h5>Live substitutions log</h5>
+    <p>When a regular teacher is unavailable, record a substitution against the
+       affected session. Portal and reports reflect the change.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">history_edu</i> Recent substitutions</h5>
+        <span class="chip ghost">{{ rows|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead>
+            <tr><th>When</th><th>Class</th><th>Original</th><th>Substitute</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td><span class="mono">{{ r.date }} {{ r.start_time }}</span></td>
+              <td><strong>{{ r.subject_name or '—' }}</strong></td>
+              <td>{{ r.original or '—' }}</td>
+              <td><span class="status-chip success"><span class="dot"></span> {{ r.substitute }}</span></td>
+              <td><small class="text-muted">{{ r.note or '' }}</small></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">
+              <div class="empty">
+                <i class="material-icons-outlined">swap_horiz</i>
+                <strong>No substitutions yet</strong>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add</i> Record a substitution</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld">
+            <label>Today's session</label>
+            <select name="session_id" class="form-select" required>
+              <option value="">—</option>
+              {% for s in sessions %}
+              <option value="{{ s.id }}">{{ s.subject_name }} @ {{ s.start_time }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Original teacher</label>
+            <input name="original" class="form-control" placeholder="Optional">
+          </div>
+          <div class="fld">
+            <label>Substitute teacher</label>
+            <input name="substitute" class="form-control" required>
+          </div>
+          <div class="fld">
+            <label>Note <span class="hint">(reason)</span></label>
+            <input name="note" class="form-control" placeholder="Sick / training / etc.">
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">save</i> Save
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

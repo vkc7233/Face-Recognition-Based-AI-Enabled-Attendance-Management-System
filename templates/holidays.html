@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block page_title %}Holiday calendar{% endblock %}
+{% block page_sub %}Suppresses absent flags and corrects attendance %{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-amber">
+  <div class="ph-icn"><i class="material-icons">today</i></div>
+  <div class="ph-body">
+    <h5>{{ holidays|length }} holiday{{ '' if holidays|length == 1 else 's' }} on file</h5>
+    <p>Holidays can be global or limited to a single branch.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">calendar_month</i> Calendar</h5>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Date</th><th>Name</th><th>Scope</th><th></th></tr></thead>
+          <tbody>
+            {% for h in holidays %}
+            <tr>
+              <td><span class="mono">{{ h.date }}</span></td>
+              <td><strong>{{ h.name }}</strong></td>
+              <td>
+                {% if h.branch_name %}<span class="chip">{{ h.branch_name }}</span>
+                {% else %}<span class="dept-chip">All branches</span>{% endif %}
+              </td>
+              <td class="text-end">
+                <form method="POST" class="d-inline" onsubmit="return confirm('Remove this holiday?')">
+                  <input type="hidden" name="delete" value="{{ h.id }}">
+                  <button class="btn btn-sm btn-danger-soft">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">
+              <div class="empty">
+                <i class="material-icons-outlined">event_available</i>
+                <strong>No holidays added</strong>
+                <div>Add a holiday on the right.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">event</i> Add holiday</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Date</label><input name="date" type="date" class="form-control" required></div>
+          <div class="fld"><label>Name</label><input name="name" class="form-control" required></div>
+          <div class="fld">
+            <label>Branch</label>
+            <select name="branch_id" class="form-select">
+              <option value="">All branches</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">save</i> Add
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

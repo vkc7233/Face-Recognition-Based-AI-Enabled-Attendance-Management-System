@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block page_title %}PPE incidents{% endblock %}
+{% block page_sub %}Helmet / vest violations at site gates{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-rose">
+  <div class="ph-icn"><i class="material-icons">health_and_safety</i></div>
+  <div class="ph-body">
+    <h5>{{ incidents|length }} incident{{ '' if incidents|length == 1 else 's' }} on file</h5>
+    <p>When site mode is on, missing helmet/vest blocks attendance and snapshots
+       the evidence here. Use these for safety audits and contractor reviews.</p>
+  </div>
+</div>
+
+<div class="card surface">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">report</i> Recent incidents</h5>
+    <span class="chip ghost">{{ incidents|length }}</span>
+  </div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>When</th><th>Person</th><th>Branch</th>
+          <th>Detected</th><th>Missing</th><th>Evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in incidents %}
+        <tr>
+          <td><span class="mono">{{ i.seen_at }}</span></td>
+          <td>{{ i.person_name or '—' }}</td>
+          <td>{{ i.branch_name or '—' }}</td>
+          <td><small class="text-muted">{{ i.detected or '—' }}</small></td>
+          <td>
+            {% for m in (i.missing or '').split(',') if m %}
+              <span class="badge-soft-rose badge me-1">{{ m }}</span>
+            {% endfor %}
+          </td>
+          <td>
+            {% if i.snapshot %}
+            <a href="{{ url_for('static', filename=i.snapshot) }}" target="_blank">
+              <img class="evidence-img" src="{{ url_for('static', filename=i.snapshot) }}" alt="">
+            </a>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">
+          <div class="empty">
+            <i class="material-icons-outlined">verified</i>
+            <strong>No PPE incidents</strong>
+            <div>Either site mode is off, or the gate is following safety rules.</div>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

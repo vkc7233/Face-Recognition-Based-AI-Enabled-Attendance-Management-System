@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}History · {{ org_name }}{% endblock %}
+{% block page_title %}Attendance history{% endblock %}
+{% block page_sub %}Browse and export any day.{% endblock %}
+
+{% block content %}
+<div class="card surface">
+  <div class="surface-head">
+    <div class="d-flex align-items-center gap-2">
+      <i class="material-icons" style="color:#a5b4fc">history</i>
+      <h5 class="m-0">Showing</h5>
+      <span class="chip">{{ l }} entries</span>
+      <span class="chip ghost">{{ selected_pretty }}</span>
+    </div>
+    <form method="GET" class="d-flex gap-2">
+      <input type="date" name="date" value="{{ selected }}" class="form-control form-control-sm" onchange="this.form.submit()">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('download', date=selected) }}">
+        <i class="material-icons md-16">download</i> CSV
+      </a>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('download', date=selected, fmt='xlsx') }}">
+        <i class="material-icons md-16">grid_on</i> Excel
+      </a>
+      <a class="btn btn-ghost btn-sm" target="_blank" href="{{ url_for('register_print', date=selected) }}">
+        <i class="material-icons md-16">print</i> Print
+      </a>
+    </form>
+  </div>
+  <div class="surface-body p-0">
+    <div class="table-responsive">
+      <table class="table table-clean mb-0">
+        <thead>
+          <tr><th style="width:60px">#</th><th>Name</th><th>ID</th><th>Department</th><th>Check in</th><th>Check out</th><th class="text-end">Status</th></tr>
+        </thead>
+        <tbody>
+          {% if l %}
+            {% for r in rows %}
+              <tr>
+                <td class="muted-num">{{ '%02d' % loop.index }}</td>
+                <td>
+                  <div class="user-cell">
+                    <span class="avatar">{{ (r.person_name or '?')[:1] | upper }}</span>
+                    <span>{{ r.person_name or '—' }}</span>
+                  </div>
+                </td>
+                <td><span class="badge id-badge">#{{ r.person_id }}</span></td>
+                <td><span class="dept-chip">{{ r.department_name or '—' }}</span></td>
+                <td class="mono">{{ r.check_in or '—' }}</td>
+                <td class="mono">{{ r.check_out or '—' }}</td>
+                <td class="text-end">
+                  {% if r.is_late %}
+                    <span class="status-chip warn"><span class="dot"></span> Late</span>
+                  {% else %}
+                    <span class="status-chip success"><span class="dot"></span> On time</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" class="empty">
+              <i class="material-icons-outlined">event_busy</i>
+              <span>No entries for this date.</span>
+            </td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

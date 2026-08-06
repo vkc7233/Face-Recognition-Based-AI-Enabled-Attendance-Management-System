@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise Edition{% endblock %}
+{% block page_title %}Enterprise Hub{% endblock %}
+{% block page_sub %}IT-ready SSO · SIEM · BYO-KMS · AI Copilot · iPaaS — built to win the corporate sale{% endblock %}
+{% block content %}
+
+<div class="page-stripe"></div>
+
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">workspaces</i></div>
+  <div class="ph-body">
+    <h5>The no-competition wedge</h5>
+    <p>
+      No global suite offers <strong>on-premise, India-resident, proxy-proof face attendance
+      with full enterprise IT readiness at an SMB-to-mid-market price.</strong>
+      This hub is where you turn that line into a checklist your buyer ticks.
+    </p>
+  </div>
+  <div class="ph-actions">
+    <a class="btn btn-primary" href="{{ url_for('enterprise.comparison_page') }}">
+      <i class="material-icons md-16">leaderboard</i> Why we win
+    </a>
+    <a class="btn btn-ghost" href="{{ url_for('enterprise.pricing_page') }}">
+      <i class="material-icons md-16">payments</i> Pricing tiers
+    </a>
+  </div>
+</div>
+
+<div class="stat-strip">
+  <div class="stat-tile {{ 'success' if sso else 'warn' }}">
+    <div class="st-label">N1 SSO providers</div>
+    <div class="st-value">{{ sso|length }}</div>
+    <div class="st-sub">Okta / Entra / Google</div>
+  </div>
+  <div class="stat-tile {{ 'success' if scim_clients else 'warn' }}">
+    <div class="st-label">N2 SCIM clients</div>
+    <div class="st-value">{{ scim_clients|length }}</div>
+    <div class="st-sub">auto-provisioning</div>
+  </div>
+  <div class="stat-tile {{ 'success' if sinks else 'warn' }}">
+    <div class="st-label">N3 SIEM sinks</div>
+    <div class="st-value">{{ sinks|length }}</div>
+    <div class="st-sub">Splunk / Datadog</div>
+  </div>
+  <div class="stat-tile {{ 'success' if kms else 'warn' }}">
+    <div class="st-label">N7 BYO-KMS keys</div>
+    <div class="st-value">{{ kms|length }}</div>
+    <div class="st-sub">customer-managed</div>
+  </div>
+  <div class="stat-tile {{ 'success' if connectors else 'warn' }}">
+    <div class="st-label">N15 Connectors</div>
+    <div class="st-value">{{ connectors|length }}</div>
+    <div class="st-sub">HRMS / payroll</div>
+  </div>
+  <div class="stat-tile accent">
+    <div class="st-label">N17 Tenants</div>
+    <div class="st-value">{{ tenants|length }}</div>
+    <div class="st-sub">multi-tenant</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">grid_view</i> The 20 enterprise features</h5>
+        <span class="chip ghost">N1 – N20</span>
+      </div>
+      <div class="surface-body p-0">
+        {% set THEMES = [
+          ('A — Enterprise IT readiness', 'verified_user', [
+            ('N1', 'SSO / SAML / OIDC', 'sso_admin', 'P1'),
+            ('N2', 'SCIM auto-provisioning', 'scim_admin', 'P2'),
+            ('N3', 'SIEM-grade audit streaming', 'siem_admin', 'P2'),
+            ('N4', 'SOC 2 / ISO 27001 evidence pack', 'compliance_pack', 'P1'),
+          ]),
+          ('B — Trust & anti-fraud', 'shield', [
+            ('N5', 'Deepfake & injection-attack defense', 'spoof_admin', 'P1'),
+            ('N6', 'Tailgating & anti-passback', 'access_admin', 'P1'),
+            ('N7', 'On-device template encryption + BYO-KMS', 'kms_admin', 'P2'),
+            ('N8', 'Emergency mustering / evacuation', 'muster_page', 'P3'),
+          ]),
+          ('C — Hybrid & remote work', 'devices', [
+            ('N9',  'Teams / Slack check-in bot', None, 'P1'),
+            ('N10', 'Calendar + Wi-Fi/VPN presence sync', None, 'P2'),
+            ('N11', 'Desktop web check-in + self-service', None, 'P2'),
+            ('N12', 'Approval-workflow engine', 'workflows_admin', 'P2'),
+          ]),
+          ('D — Intelligence & integration', 'auto_awesome', [
+            ('N13', 'AI Workforce Copilot', 'copilot_page', 'P1'),
+            ('N14', 'Workforce analytics + attrition risk', 'analytics_page', 'P2'),
+            ('N15', 'HRMS / payroll connectors + iPaaS', 'connectors_admin', 'P1'),
+            ('N16', 'Space + desk occupancy analytics', 'occupancy_admin', 'P3'),
+          ]),
+          ('E — Platform & channel', 'hub', [
+            ('N17', 'Multi-tenant control plane', 'tenants_admin', 'P2'),
+            ('N18', 'White-label / reseller portal', 'whitelabel_admin', 'P2'),
+            ('N19', 'Face-auth SDK + embeddable widget', 'sdk_admin', 'P3'),
+            ('N20', 'Localization + a11y + offline sync', None, 'P3'),
+          ]),
+        ] %}
+        {% for title, icon, items in THEMES %}
+          <div class="section-head px-3 pt-3">
+            <i class="material-icons-outlined" style="font-size:16px;color:#6366f1;">{{ icon }}</i>
+            <span>{{ title }}</span>
+          </div>
+          <ul class="list-unstyled mb-0">
+            {% for code, name, ep, pri in items %}
+            <li class="d-flex align-items-center gap-3 px-3 py-2"
+                style="border-bottom: 1px solid var(--surface-line);">
+              <span class="id-badge">{{ code }}</span>
+              <strong style="flex:1;">{{ name }}</strong>
+              <span class="badge-soft-{{ 'rose' if pri == 'P1' else ('amber' if pri == 'P2' else 'emerald') }} badge">{{ pri }}</span>
+              {% if ep %}
+              <a class="btn btn-sm btn-soft-primary" href="{{ url_for('enterprise.' + ep) }}">Open</a>
+              {% else %}<span class="text-muted small">webhook</span>{% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface mb-3">
+      <div class="surface-head"><h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">leaderboard</i> Score against the IT checklist</h5></div>
+      <div class="surface-body">
+        {% set ok_sso = sso|length > 0 %}
+        {% set ok_scim = scim_clients|length > 0 %}
+        {% set ok_siem = sinks|length > 0 %}
+        {% set ok_kms = kms|length > 0 %}
+        {% set ok_conn = connectors|length > 0 %}
+        {% set checks = [
+          (ok_sso,  'SSO clears CIO/IT gate'),
+          (ok_scim, 'SCIM removes manual enrolment'),
+          (ok_siem, 'SIEM streaming for CISO'),
+          (ok_kms,  'BYO-KMS — "you can\'t read our faces"'),
+          (ok_conn, 'Payroll connector — kills "won\'t integrate"'),
+        ] %}
+        {% set passing = checks|selectattr(0)|list|length %}
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div style="font-size:2.6rem; font-weight:800; color: var(--accent);">{{ passing }}<small class="text-muted">/{{ checks|length }}</small></div>
+          <div class="text-muted small">corporate gates passing</div>
+        </div>
+        {% for ok, label in checks %}
+        <div class="guard-row" style="padding-left:0;">
+          <span class="guard-led {% if ok %}on{% endif %}"></span>
+          <div class="guard-body"><strong>{{ label }}</strong></div>
+          <span class="guard-state {% if ok %}on{% else %}off{% endif %}">{{ 'ON' if ok else 'OFF' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card surface mb-3">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">warning</i> Latest spoof / access events</h5>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <tbody>
+            {% for e in spoof %}
+            <tr>
+              <td><span class="status-chip danger"><span class="dot"></span> {{ e.kind }}</span></td>
+              <td><small>{{ e.detail or '—' }}</small></td>
+              <td><span class="mono small">{{ e.seen_at[11:19] }}</span></td>
+            </tr>
+            {% endfor %}
+            {% for e in access %}
+            <tr>
+              <td><span class="status-chip warn"><span class="dot"></span> {{ e.kind }}</span></td>
+              <td><small>{{ e.detail or '—' }}</small></td>
+              <td><span class="mono small">{{ e.seen_at[11:19] }}</span></td>
+            </tr>
+            {% else %}
+            {% if not spoof %}<tr><td colspan="3" class="text-center text-muted py-3">No security events yet — quiet kiosk.</td></tr>{% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card surface promo">
+      <div class="surface-body" style="background: linear-gradient(135deg,#4f46e5,#7c3aed);">
+        <h6 style="color:#fff;">90-second demo script</h6>
+        <ol style="color:#e0e7ff;font-size:0.88rem;padding-left:18px;">
+          <li>Live proxy-proof clock-in, then fool it with a phone photo (N5).</li>
+          <li>Sign in via the customer's Okta/Entra (N1).</li>
+          <li>Ask the Copilot "who was late this week?" (N13).</li>
+          <li>Click "sync to payroll" (N15).</li>
+          <li>Close: "all of this runs on your servers, your data never leaves."</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

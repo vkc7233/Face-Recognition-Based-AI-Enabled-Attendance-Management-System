@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block page_title %}Branches & Sites{% endblock %}
+{% block page_sub %}Multi-location rollups with geofenced check-in{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">apartment</i></div>
+  <div class="ph-body">
+    <h5>{{ branches|length }} branch{{ '' if branches|length == 1 else 'es' }} configured</h5>
+    <p>Each branch can have a circular (lat/lng + radius) or polygon geofence.
+       Mobile GPS check-in is accepted only inside a defined site.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">apartment</i> All branches</h5>
+        <span class="chip ghost">{{ branches|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table table-clean mb-0">
+          <thead>
+            <tr><th>Name</th><th>Address</th><th>Geofence</th><th class="text-end">Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for b in branches %}
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <span class="avatar">{{ b.name[0] | upper }}</span>
+                  <div>
+                    <strong>{{ b.name }}</strong>
+                    <div class="mono">{{ b.timezone or 'no timezone' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="mono">{{ b.address or '—' }}</span></td>
+              <td>
+                {% if b.polygon_json %}
+                  <span class="status-chip success"><span class="dot"></span> polygon</span>
+                {% elif b.lat and b.lng %}
+                  <span class="badge-soft badge mono">{{ '%.4f'|format(b.lat) }}, {{ '%.4f'|format(b.lng) }} · {{ b.radius_m|int }} m</span>
+                {% else %}
+                  <span class="status-chip warn"><span class="dot"></span> no fence</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <form method="POST" class="d-inline" onsubmit="return confirm('Delete this branch?')">
+                  <input type="hidden" name="delete" value="{{ b.id }}">
+                  <button class="btn btn-sm btn-danger-soft">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4">
+                <div class="empty">
+                  <i class="material-icons-outlined">domain_disabled</i>
+                  <strong>No branches yet</strong>
+                  <div>Add your first site on the right.</div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_location</i> Add branch</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld">
+            <label>Name</label>
+            <input name="name" class="form-control" placeholder="Smart Life Project" required>
+          </div>
+          <div class="fld">
+            <label>Address</label>
+            <input name="address" class="form-control" placeholder="Street, city, state">
+          </div>
+          <div class="fld">
+            <label>Timezone</label>
+            <input name="timezone" class="form-control" placeholder="Asia/Kolkata">
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-4"><input name="lat"      type="number" step="any" class="form-control" placeholder="Lat"></div>
+            <div class="col-4"><input name="lng"      type="number" step="any" class="form-control" placeholder="Lng"></div>
+            <div class="col-4"><input name="radius_m" type="number" class="form-control" placeholder="Radius m"></div>
+          </div>
+          <div class="fld">
+            <label>Polygon JSON <span class="hint">(advanced — overrides circle)</span></label>
+            <textarea name="polygon_json" rows="3" class="form-control"
+                      placeholder="[[18.520,73.851],[18.521,73.852],…]"></textarea>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">save</i> Save branch
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

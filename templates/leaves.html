@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block page_title %}Leaves & regularisation{% endblock %}
+{% block page_sub %}Apply, approve, and reflect against attendance %{% endblock %}
+{% block content %}
+
+<div class="stat-strip">
+  <div class="stat-tile warn">
+    <div class="st-label">Pending</div>
+    <div class="st-value">{{ pending|length }}</div>
+    <div class="st-sub">awaiting decision</div>
+  </div>
+  <div class="stat-tile success">
+    <div class="st-label">Approved (recent)</div>
+    <div class="st-value">{{ recent | selectattr('status','equalto','approved') | list | length }}</div>
+  </div>
+  <div class="stat-tile danger">
+    <div class="st-label">Rejected (recent)</div>
+    <div class="st-value">{{ recent | selectattr('status','equalto','rejected') | list | length }}</div>
+  </div>
+  <div class="stat-tile accent">
+    <div class="st-label">Total this view</div>
+    <div class="st-value">{{ recent|length }}</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card surface mb-3">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">pending_actions</i> Pending decisions</h5>
+        <span class="chip ghost">{{ pending|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead>
+            <tr><th>Person</th><th>Type</th><th>Window</th><th>Reason</th><th class="text-end">Action</th></tr>
+          </thead>
+          <tbody>
+            {% for l in pending %}
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <span class="avatar">{{ (l.person_name or l.person_id)[0] | upper }}</span>
+                  <div>
+                    <strong>{{ l.person_name or '—' }}</strong>
+                    <div class="mono">#{{ l.person_id }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge-soft badge">{{ l.leave_type }}</span></td>
+              <td><span class="mono">{{ l.start_date }} → {{ l.end_date }}</span></td>
+              <td><small>{{ l.reason or '—' }}</small></td>
+              <td class="text-end">
+                <form method="POST" class="d-inline">
+                  <input type="hidden" name="leave_id" value="{{ l.id }}">
+                  <button name="decide" value="approved"  class="btn btn-sm btn-success">Approve</button>
+                  <button name="decide" value="rejected"  class="btn btn-sm btn-danger-soft">Reject</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">
+              <div class="empty">
+                <i class="material-icons-outlined">inbox</i>
+                <strong>All caught up</strong>
+                <div>No pending leave decisions.</div>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">history</i> Recent</h5>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Person</th><th>Type</th><th>Window</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for l in recent %}
+            <tr>
+              <td>{{ l.person_name or '—' }}</td>
+              <td><span class="badge-soft badge">{{ l.leave_type }}</span></td>
+              <td><span class="mono">{{ l.start_date }} → {{ l.end_date }}</span></td>
+              <td>
+                {% if l.status == 'approved' %}<span class="status-chip success"><span class="dot"></span> approved</span>
+                {% elif l.status == 'rejected' %}<span class="status-chip danger"><span class="dot"></span> rejected</span>
+                {% else %}<span class="status-chip warn"><span class="dot"></span> pending</span>{% endif %}
+              </td>
+            </tr>
+            {% else %}<tr><td colspan="4" class="text-center text-muted py-4">Nothing yet.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">post_add</i> Apply (on behalf)</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld">
+            <label>Person</label>
+            <select name="person_id" class="form-select" required>
+              <option value="">—</option>
+              {% for p in persons %}
+              <option value="{{ p.person_id }}">{{ p.name }} (#{{ p.person_id }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="fld">
+            <label>Leave type</label>
+            <select name="leave_type" class="form-select">
+              <option value="sick">Sick</option>
+              <option value="casual">Casual</option>
+              <option value="earned">Earned</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="regularisation">Regularisation</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label">From</label>
+              <input name="start_date" type="date" class="form-control" required>
+            </div>
+            <div class="col">
+              <label class="form-label">To</label>
+              <input name="end_date" type="date" class="form-control" required>
+            </div>
+          </div>
+          <div class="fld">
+            <label>Reason</label>
+            <textarea name="reason" class="form-control" rows="2"></textarea>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">send</i> Submit
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

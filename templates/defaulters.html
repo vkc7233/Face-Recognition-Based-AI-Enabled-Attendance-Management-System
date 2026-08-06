@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Defaulters · {{ org_name }}{% endblock %}
+{% block page_title %}Defaulters{% endblock %}
+{% block page_sub %}Students below the required attendance percentage.{% endblock %}
+
+{% block content %}
+<div class="card surface">
+  <div class="surface-head">
+    <div class="d-flex align-items-center gap-2">
+      <i class="material-icons" style="color:#ef4444">warning_amber</i>
+      <h5 class="m-0">Below {{ threshold_pct }}%</h5>
+      <span class="chip">{{ rows | length }} flagged</span>
+    </div>
+    <form method="GET" class="d-flex gap-2 align-items-center">
+      <label class="small text-muted m-0">Threshold</label>
+      <input type="number" name="pct" min="0" max="100" step="1" value="{{ threshold_pct | int }}" class="form-control form-control-sm" style="width:80px">
+      <button class="btn btn-ghost btn-sm">Apply</button>
+    </form>
+  </div>
+  <div class="surface-body p-0">
+    <div class="table-responsive">
+      <table class="table table-clean mb-0">
+        <thead>
+          <tr><th style="width:60px">#</th><th>Student</th><th>Roll</th><th>Subject</th><th>Attended</th><th>Held</th><th class="text-end">%</th></tr>
+        </thead>
+        <tbody>
+          {% if rows %}
+            {% for r in rows %}
+              <tr>
+                <td class="muted-num">{{ '%02d' % loop.index }}</td>
+                <td>
+                  <a class="user-cell text-decoration-none text-reset" href="{{ url_for('user_detail', pid=r.person_id) }}">
+                    <img class="avatar-img" src="{{ url_for('static', filename='profiles/' ~ r.person_id ~ '.jpg') }}" onerror="this.outerHTML='<span class=\'avatar\'>{{ r.name[:1] | upper }}</span>'">
+                    <span>{{ r.name }}</span>
+                  </a>
+                </td>
+                <td><span class="badge id-badge">#{{ r.person_id }}</span></td>
+                <td>
+                  <b>{{ r.subject_name }}</b>
+                  {% if r.subject_code %}<span class="badge id-badge ms-1">{{ r.subject_code }}</span>{% endif %}
+                </td>
+                <td class="mono">{{ r.attended }}</td>
+                <td class="mono">{{ r.held }}</td>
+                <td class="text-end">
+                  <span class="pct-pill {{ 'danger' if r.pct < 50 else 'warn' }}">{{ r.pct }}%</span>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" class="empty">
+              <i class="material-icons-outlined">task_alt</i>
+              <span>No defaulters at {{ threshold_pct }}% — everyone's compliant.</span>
+            </td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<p class="small text-muted mt-3">
+  <i class="material-icons-outlined md-16">info</i>
+  The required attendance percentage is set in <a href="{{ url_for('settings') }}">Settings → Recognition</a>.
+  Subjects with no classes held yet are excluded from this list.
+</p>
+{% endblock %}

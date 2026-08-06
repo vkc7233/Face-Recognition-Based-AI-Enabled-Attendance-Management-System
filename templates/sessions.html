@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Class sessions · {{ org_name }}{% endblock %}
+{% block page_title %}Class sessions{% endblock %}
+{% block page_sub %}Periods / lectures. Activate one to start session-aware attendance.{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <div class="d-flex align-items-center gap-2">
+          <i class="material-icons" style="color:#a5b4fc">event_note</i>
+          <h5 class="m-0">Sessions on</h5>
+          <span class="chip">{{ sessions | length }}</span>
+        </div>
+        <form method="GET" class="d-flex gap-2">
+          <input type="date" name="date" value="{{ selected_date }}" class="form-control form-control-sm" onchange="this.form.submit()">
+        </form>
+      </div>
+      <div class="surface-body p-0">
+        <div class="table-responsive">
+          <table class="table table-clean mb-0">
+            <thead>
+              <tr><th style="width:40px"></th><th>Subject</th><th>Time</th><th>Class</th><th class="text-end">Present</th><th class="text-end">Actions</th></tr>
+            </thead>
+            <tbody>
+              {% if sessions %}
+                {% for s in sessions %}
+                  <tr {% if active_session_id and active_session_id|int == s.id %}class="row-active"{% endif %}>
+                    <td>
+                      {% if active_session_id and active_session_id|int == s.id %}
+                        <span class="status-chip success" title="Active"><span class="dot"></span></span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <a href="{{ url_for('session_detail', sid=s.id) }}" class="text-decoration-none text-reset">
+                        <b>{{ s.subject_name or '—' }}</b>
+                        {% if s.subject_code %} <span class="badge id-badge ms-1">{{ s.subject_code }}</span>{% endif %}
+                        {% if s.notes %}<div class="small text-muted">{{ s.notes }}</div>{% endif %}
+                      </a>
+                    </td>
+                    <td class="mono">{{ s.start_time }} – {{ s.end_time }}</td>
+                    <td><span class="dept-chip">{{ s.department_name or '—' }}</span></td>
+                    <td class="text-end"><span class="chip">{{ s.present }}</span></td>
+                    <td class="text-end">
+                      {% if active_session_id and active_session_id|int == s.id %}
+                        <form method="POST" action="{{ url_for('set_active_session') }}" class="d-inline">
+                          <input type="hidden" name="session_id" value="">
+                          <button class="btn btn-ghost btn-sm" title="Deactivate"><i class="material-icons md-16">stop_circle</i> Stop</button>
+                        </form>
+                      {% else %}
+                        <form method="POST" action="{{ url_for('set_active_session') }}" class="d-inline">
+                          <input type="hidden" name="session_id" value="{{ s.id }}">
+                          <button class="btn btn-success btn-sm" title="Activate"><i class="material-icons md-16">play_arrow</i> Activate</button>
+                        </form>
+                      {% endif %}
+                      <form method="POST" class="d-inline" onsubmit="return confirm('Delete this session and its attendance?')">
+                        <input type="hidden" name="delete" value="{{ s.id }}">
+                        <button class="btn btn-danger-soft btn-sm"><i class="material-icons md-16">delete_outline</i></button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="6" class="empty">
+                  <i class="material-icons-outlined">event_busy</i>
+                  <span>No sessions scheduled for {{ selected_date }}.</span>
+                </td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_circle</i> New session</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST" class="vstack gap-3">
+          <div>
+            <label class="form-label">Subject</label>
+            <select class="form-select" name="subject_id" required>
+              <option value="">— select —</option>
+              {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.name }}{% if s.code %} ({{ s.code }}){% endif %}{% if s.department_name %} · {{ s.department_name }}{% endif %}</option>
+              {% endfor %}
+            </select>
+            {% if not subjects %}
+              <div class="form-text"><a href="{{ url_for('subjects') }}">Add a subject first →</a></div>
+            {% endif %}
+          </div>
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-control" name="date" value="{{ selected_date }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Start</label>
+              <input type="time" class="form-control" name="start_time" value="09:00">
+            </div>
+            <div class="col-6">
+              <label class="form-label">End</label>
+              <input type="time" class="form-control" name="end_time" value="10:00">
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Notes (optional)</label>
+            <input class="form-control" name="notes" placeholder="Room 204 · Lecture 5">
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="start_now" value="1" id="startNow" checked>
+            <label class="form-check-label" for="startNow">Activate this session immediately</label>
+          </div>
+          <button class="btn btn-primary"><i class="material-icons md-18">add</i> Create</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

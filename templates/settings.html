@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% block title %}Settings · {{ org_name }}{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_sub %}Configure your organisation, working hours and recognition.{% endblock %}
+
+{% block content %}
+<form method="POST">
+<div class="row g-4">
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">corporate_fare</i> Organisation</h5>
+      </div>
+      <div class="surface-body vstack gap-3">
+        <div>
+          <label class="form-label">Display name</label>
+          <input class="form-control" name="org_name" value="{{ settings.org_name }}" required>
+          <div class="form-text">Appears in the sidebar, login screen and reports.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card surface mt-4">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">schedule</i> Working hours</h5>
+      </div>
+      <div class="surface-body vstack gap-3">
+        <div>
+          <label class="form-label">Work-start time</label>
+          <input type="time" class="form-control" name="work_start_time" value="{{ settings.work_start_time }}">
+        </div>
+        <div>
+          <label class="form-label">Late grace (minutes)</label>
+          <input type="number" min="0" max="120" class="form-control" name="late_threshold_min" value="{{ settings.late_threshold_min }}">
+          <div class="form-text">Arrivals after <code>work_start + grace</code> are flagged <b>Late</b>.</div>
+        </div>
+        <div>
+          <label class="form-label">Min. check-out gap (minutes)</label>
+          <input type="number" min="0" max="600" class="form-control" name="min_checkout_gap_min" value="{{ settings.min_checkout_gap_min }}">
+          <div class="form-text">A second sighting within this window doesn't overwrite check-out time.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">verified_user</i> Recognition</h5>
+      </div>
+      <div class="surface-body vstack gap-3">
+        <div>
+          <label class="form-label">Recognition distance threshold</label>
+          <input type="number" min="0" class="form-control" name="recognition_threshold" value="{{ settings.recognition_threshold }}">
+          <div class="form-text">Lower = stricter (fewer false positives). Faces above this distance are marked <b>Unknown</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card surface mt-4">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">category</i> Departments / Classes</h5>
+      </div>
+      <div class="surface-body">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for d in departments %}
+            <span class="dept-tag">
+              {{ d.name }}
+              <button type="submit" name="del_dept" value="{{ d.id }}" class="dept-x" title="Remove">×</button>
+            </span>
+          {% else %}
+            <span class="text-muted small">No departments yet.</span>
+          {% endfor %}
+        </div>
+        <div class="input-group">
+          <input class="form-control" name="new_dept" placeholder="Add a department / class…">
+          <button class="btn btn-primary"><i class="material-icons md-16">add</i> Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card surface mt-4">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">lock_reset</i> Change admin password</h5>
+      </div>
+      <div class="surface-body">
+        <input type="password" class="form-control" name="new_password" placeholder="Leave blank to keep current">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">remove_red_eye</i> Liveness anti-spoofing</h5>
+      </div>
+      <div class="surface-body vstack gap-3">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="liveness_enabled" value="1"
+                 {% if settings.get('liveness_enabled','1') == '1' %}checked{% endif %} id="liveOn">
+          <label class="form-check-label" for="liveOn">
+            Require eye-blink + motion + texture check before marking
+          </label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="encrypt_templates" value="1"
+                 {% if settings.get('encrypt_templates','0') == '1' %}checked{% endif %} id="encOn">
+          <label class="form-check-label" for="encOn">Encrypt biometric templates at rest (AES-256)</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">videocam</i> Camera source</h5>
+      </div>
+      <div class="surface-body vstack gap-3">
+        <div>
+          <label class="form-label">Camera URL (RTSP / HTTP) — blank uses local webcam</label>
+          <input class="form-control" name="camera_url" value="{{ settings.get('camera_url','') }}"
+                 placeholder="rtsp://user:pass@cam.local/Streaming/Channels/101">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">notifications_active</i> Notifications</h5>
+      </div>
+      <div class="surface-body vstack gap-2">
+        <small class="text-muted">SMTP</small>
+        <div class="row g-2">
+          <div class="col"><input class="form-control" name="smtp_host" value="{{ settings.get('smtp_host','') }}" placeholder="smtp host"></div>
+          <div class="col"><input class="form-control" name="smtp_port" value="{{ settings.get('smtp_port','587') }}" placeholder="port"></div>
+        </div>
+        <div class="row g-2">
+          <div class="col"><input class="form-control" name="smtp_user" value="{{ settings.get('smtp_user','') }}" placeholder="user"></div>
+          <div class="col"><input class="form-control" type="password" name="smtp_pass" value="{{ settings.get('smtp_pass','') }}" placeholder="password"></div>
+        </div>
+        <input class="form-control" name="smtp_from" value="{{ settings.get('smtp_from','') }}" placeholder="From address">
+        <small class="text-muted mt-2">SMS gateway</small>
+        <input class="form-control" name="sms_url" value="{{ settings.get('sms_url','') }}" placeholder="POST URL e.g. https://api.msg91.com/api/sendhttp.php">
+        <textarea class="form-control" rows="2" name="sms_body_template" placeholder='JSON body template, use {{to}} and {{body}}'>{{ settings.get('sms_body_template','') }}</textarea>
+        <small class="text-muted mt-2">WhatsApp Cloud API</small>
+        <div class="row g-2">
+          <div class="col"><input class="form-control" name="whatsapp_phone_id" value="{{ settings.get('whatsapp_phone_id','') }}" placeholder="phone_number_id"></div>
+          <div class="col"><input class="form-control" name="whatsapp_template" value="{{ settings.get('whatsapp_template','') }}" placeholder="approved template name"></div>
+        </div>
+        <input class="form-control" type="password" name="whatsapp_token" value="{{ settings.get('whatsapp_token','') }}" placeholder="bearer token">
+        <input class="form-control mt-2" name="digest_recipients" value="{{ settings.get('digest_recipients','') }}" placeholder="Daily digest recipients (csv emails)">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">privacy_tip</i> Privacy & retention</h5>
+      </div>
+      <div class="surface-body row g-2">
+        <div class="col-md-6">
+          <label class="form-label small">Visitor snapshot days</label>
+          <input class="form-control" type="number" name="retention_visitors_days" value="{{ settings.get('retention_visitors_days','30') }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Notifications log days</label>
+          <input class="form-control" type="number" name="retention_notifications_days" value="{{ settings.get('retention_notifications_days','90') }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Audit log days</label>
+          <input class="form-control" type="number" name="retention_audit_days" value="{{ settings.get('retention_audit_days','365') }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">GPS marks days</label>
+          <input class="form-control" type="number" name="retention_gps_days" value="{{ settings.get('retention_gps_days','365') }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label small">GPS accuracy max (m)</label>
+          <input class="form-control" type="number" name="gps_accuracy_max_m" value="{{ settings.get('gps_accuracy_max_m','60') }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">construction</i> Site mode (Construction Edition)</h5>
+      </div>
+      <div class="surface-body vstack gap-2">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="site_mode_enabled" value="1"
+                 {% if settings.get('site_mode_enabled','0') == '1' %}checked{% endif %} id="siteOn">
+          <label class="form-check-label" for="siteOn">Enable contractor + muster + PPE features</label>
+        </div>
+        <label class="form-label small mt-2">PPE required (csv): helmet,vest</label>
+        <input class="form-control" name="ppe_required" value="{{ settings.get('ppe_required','helmet,vest') }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">precision_manufacturing</i> Recogniser backend</h5>
+      </div>
+      <div class="surface-body vstack gap-2">
+        <select name="recognizer_backend" class="form-select">
+          {% for b in ['auto','lbph','embeddings','knn'] %}
+          <option value="{{ b }}"
+            {% if settings.get('recognizer_backend','auto') == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+        <small class="text-muted">
+          <b>embeddings</b> uses ONNX (drop <code>static/models/embedding.onnx</code>)
+          or a PCA+LDA pipeline. Retrain after switching.
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">masks</i> Mask & temperature</h5>
+      </div>
+      <div class="surface-body vstack gap-2">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="mask_required" value="1"
+                 {% if settings.get('mask_required','0') == '1' %}checked{% endif %} id="maskOn">
+          <label class="form-check-label" for="maskOn">Require mask before marking</label>
+        </div>
+        <label class="form-label small mt-2">Temperature cutoff (°C)</label>
+        <input class="form-control" name="temp_cutoff_c"
+               value="{{ settings.get('temp_cutoff_c','37.5') }}" type="number" step="0.1">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">sensor_door</i> Door relay (access control)</h5>
+      </div>
+      <div class="surface-body vstack gap-2">
+        <label class="form-label small">Relay URL</label>
+        <input class="form-control" name="door_relay_url"
+               value="{{ settings.get('door_relay_url','') }}"
+               placeholder="http://shelly/relay/0?turn=on">
+        <div class="row g-2">
+          <div class="col">
+            <select name="door_relay_method" class="form-select">
+              <option {% if settings.get('door_relay_method','GET') == 'GET' %}selected{% endif %}>GET</option>
+              <option {% if settings.get('door_relay_method') == 'POST' %}selected{% endif %}>POST</option>
+            </select>
+          </div>
+          <div class="col"><input class="form-control" name="door_relay_body"
+                                   value="{{ settings.get('door_relay_body','') }}"
+                                   placeholder="POST body (optional)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">chat</i> WhatsApp two-way bot</h5>
+      </div>
+      <div class="surface-body vstack gap-2">
+        <label class="form-label small">Webhook verify token (Meta dashboard)</label>
+        <input class="form-control" name="whatsapp_verify_token"
+               value="{{ settings.get('whatsapp_verify_token','') }}"
+               placeholder="facemark-verify">
+        <small class="text-muted">Point your Meta webhook to
+          <code>https://your-host/webhook/whatsapp</code> with this token.
+          Send <code>help</code> from a customer to test.</small>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="d-flex justify-content-end mt-3">
+  <button class="btn btn-primary btn-lg">
+    <i class="material-icons md-18">save</i> Save settings
+  </button>
+</div>
+</form>
+{% endblock %}

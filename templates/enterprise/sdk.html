@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · SDK{% endblock %}
+{% block page_title %}Face-auth SDK / embeddable widget (N19){% endblock %}
+{% block page_sub %}Customers embed FaceMark face-verify in their own apps — a new revenue line{% endblock %}
+{% block content %}
+<div class="page-hero hero-sky">
+  <div class="ph-icn"><i class="material-icons">extension</i></div>
+  <div class="ph-body"><h5>Drop-in JS: <code>{{ url_for('sdk_v1.sdk_widget', _external=True) }}</code></h5></div>
+</div>
+
+{% if new_pair %}
+<div class="alert" style="background:#fffbeb;color:#92400e;">
+  <i class="material-icons-outlined">warning</i>
+  <div>
+    <strong>New client created — copy now, the secret will not be shown again.</strong>
+    <div class="mono mt-1">public_id: {{ new_pair.public_id }}</div>
+    <div class="mono">secret:    {{ new_pair.secret }}</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Clients</h5></div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>public_id</th><th>Origins</th><th>Rate/min</th><th></th></tr></thead>
+          <tbody>
+            {% for c in clients %}
+            <tr>
+              <td><strong>{{ c.name }}</strong></td>
+              <td><span class="mono small">{{ c.public_id }}</span></td>
+              <td><span class="url-chip">{{ c.origins or '*' }}</span></td>
+              <td><span class="mono">{{ c.rate_per_min }}</span></td>
+              <td class="text-end"><form method="POST" class="d-inline"><input type="hidden" name="delete" value="{{ c.id }}"><button class="btn btn-sm btn-danger-soft">×</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="5"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">extension</i></div><strong>No SDK clients</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Create client</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Name</label><input name="name" class="form-control" required></div>
+          <div class="fld"><label>Allowed origins (csv)</label><input name="origins" class="form-control" placeholder="https://acme.com,https://app.acme.com"></div>
+          <button class="btn btn-primary w-100">Generate</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

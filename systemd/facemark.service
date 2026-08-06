@@ -1,0 +1,19 @@
+[Unit]
+Description=FaceMark — face-recognition attendance (edge appliance)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=facemark
+WorkingDirectory=/opt/facemark
+EnvironmentFile=-/etc/facemark.env
+ExecStart=/opt/facemark/.venv/bin/python app.py
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=8192
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

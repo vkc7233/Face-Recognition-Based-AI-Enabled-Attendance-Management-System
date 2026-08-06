@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise · SIEM{% endblock %}
+{% block page_title %}SIEM audit streaming (N3){% endblock %}
+{% block page_sub %}Tiered retention · push to Splunk / Datadog / Elastic / Sentinel{% endblock %}
+{% block content %}
+<div class="page-hero hero-rose">
+  <div class="ph-icn"><i class="material-icons">stacked_line_chart</i></div>
+  <div class="ph-body">
+    <h5>Tiered retention</h5>
+    <p>Default: auth {{ retention.auth // 30 }}mo · admin {{ retention.admin // 30 }}mo · impersonation {{ retention.impersonation // 30 }}mo · mfa {{ retention.mfa // 30 }}mo · other {{ retention.other }}d.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Sinks</h5>
+      <form method="POST" class="d-inline"><button name="drain" value="1" class="btn btn-sm btn-soft-primary"><i class="material-icons md-16">cloud_upload</i> Drain now</button></form>
+    </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>URL</th><th>Format</th><th>Last</th><th></th></tr></thead>
+          <tbody>
+            {% for s in sinks %}
+            <tr>
+              <td><strong>{{ s.name }}</strong></td>
+              <td><span class="url-chip">{{ s.url[:50] }}</span></td>
+              <td><span class="badge-soft badge">{{ s.fmt }}</span></td>
+              <td>
+                {% if s.last_status and 'ok' in (s.last_status or '') %}<span class="status-chip success"><span class="dot"></span> {{ s.last_status }}</span>
+                {% elif s.last_status %}<span class="status-chip danger"><span class="dot"></span> {{ s.last_status[:30] }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td class="text-end"><form method="POST" class="d-inline"><input type="hidden" name="delete" value="{{ s.id }}"><button class="btn btn-sm btn-danger-soft">×</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="5"><div class="empty"><div class="empty-icon"><i class="material-icons-outlined">cloud_off</i></div><strong>No SIEM sinks</strong></div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card surface"><div class="surface-head"><h5 class="m-0">Add sink</h5></div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Name</label><input name="name" class="form-control" placeholder="Splunk HEC prod" required></div>
+          <div class="fld"><label>POST URL</label><input name="url" class="form-control" placeholder="https://splunk/services/collector" required></div>
+          <div class="fld"><label>Auth header</label><input name="auth_header" class="form-control" placeholder="Authorization: Splunk <token>"></div>
+          <div class="fld"><label>Format</label>
+            <select name="fmt" class="form-select"><option value="json">JSON</option><option value="cef">CEF (ArcSight)</option><option value="leef">LEEF (QRadar)</option></select>
+          </div>
+          <button class="btn btn-primary w-100">Add</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

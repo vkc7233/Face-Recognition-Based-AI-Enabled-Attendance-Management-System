@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · {{ org_name }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/styles.css') }}?v={{ asset_version }}" rel="stylesheet">
+  <style nonce="{{ csp_nonce() }}">
+    .sso-btn {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; padding: 11px 14px;
+      border: 1px solid #e2e8f0; border-radius: 12px;
+      background: #fff; color: #1f2937;
+      font-weight: 600; font-size: 0.95rem;
+      text-decoration: none;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+    }
+    .sso-btn:hover {
+      border-color: #a5b4fc; color: #1f2937;
+      box-shadow: 0 8px 22px -12px rgba(99,102,241,0.35);
+    }
+    .sso-btn:active { transform: translateY(1px); }
+    .sso-btn .sso-logo {
+      width: 22px; height: 22px; border-radius: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    /* Google G */
+    .sso-google .sso-logo { background: #fff; }
+    .sso-google .sso-logo svg { width: 18px; height: 18px; }
+    /* Microsoft Entra */
+    .sso-entra .sso-logo  { background: #fff; }
+    .sso-entra .sso-logo svg { width: 18px; height: 18px; }
+    /* Okta */
+    .sso-okta .sso-logo   { background: #007dc1; color: #fff;
+                            font-weight: 800; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+    /* Generic OIDC */
+    .sso-oidc .sso-logo   { background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff; }
+    .sso-oidc .sso-logo i { font-size: 14px; }
+
+    .sso-label { flex: 1; text-align: left; line-height: 1.15; }
+    .sso-label small { display: block; color: #94a3b8; font-weight: 500; font-size: 0.74rem; margin-top: 1px; }
+
+    .sso-divider {
+      display: flex; align-items: center; gap: 10px;
+      color: #94a3b8; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
+      margin: 18px 0 14px;
+    }
+    .sso-divider::before, .sso-divider::after {
+      content: ''; flex: 1; height: 1px; background: #e2e8f0;
+    }
+  </style>
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="login-mark"><i class="material-icons">face_retouching_natural</i></div>
+      <h3>{{ org_name }}</h3>
+      <p>Sign in to manage attendance</p>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}{% for cat, m in msgs %}
+        <div class="alert alert-{{ cat }} py-2 small">{{ m }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    {% set sso_list = sso_providers or [] %}
+    {% if sso_list %}
+    <div class="vstack gap-2 mb-2">
+      {% for p in sso_list %}
+        <a class="sso-btn sso-{{ p.kind if p.kind in ['google','entra','okta'] else 'oidc' }}"
+           href="{{ url_for('enterprise.sso_login', provider_id=p.id) }}">
+          <span class="sso-logo">
+            {% if p.kind == 'google' %}
+              <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+            {% elif p.kind == 'entra' %}
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M11.4 0H0v11.4h11.4V0z" fill="#F35325"/>
+                <path d="M24 0H12.6v11.4H24V0z" fill="#81BC06"/>
+                <path d="M11.4 12.6H0V24h11.4V12.6z" fill="#05A6F0"/>
+                <path d="M24 12.6H12.6V24H24V12.6z" fill="#FFBA08"/>
+              </svg>
+            {% elif p.kind == 'okta' %}
+              <span>O</span>
+            {% else %}
+              <i class="material-icons-outlined">badge</i>
+            {% endif %}
+          </span>
+          <span class="sso-label">
+            Continue with {{ p.name }}
+            {% if p.domain %}<small>{{ p.domain }} accounts only</small>{% endif %}
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+    <div class="sso-divider">or sign in with password</div>
+    {% endif %}
+
+    <form method="POST" class="vstack gap-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div>
+        <label class="form-label">Username</label>
+        <div class="input-with-icn">
+          <i class="material-icons-outlined">person</i>
+          <input class="form-control" name="username" autofocus required>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Password</label>
+        <div class="input-with-icn">
+          <i class="material-icons-outlined">lock</i>
+          <input class="form-control" type="password" name="password" required>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg">Sign in</button>
+    </form>
+
+    <p class="login-foot">
+      Default credentials on first run: <code>admin / admin123</code>.
+      Change them in <b>Settings</b> after signing in.
+    </p>
+  </div>
+</body>
+</html>

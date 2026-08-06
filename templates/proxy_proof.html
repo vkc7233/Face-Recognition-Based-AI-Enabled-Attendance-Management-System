@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block page_title %}Proxy-Proof Guarantee{% endblock %}
+{% block page_sub %}One headline: attendance that cannot be faked.{% endblock %}
+{% block content %}
+
+<div class="page-stripe"></div>
+
+<div class="page-hero hero-emerald">
+  <div class="ph-icn"><i class="material-icons">verified_user</i></div>
+  <div class="ph-body">
+    <h5>The "cannot-be-faked" promise</h5>
+    <p>
+      No single competitor combines on-prem crowd recognition with liveness, geofence,
+      encrypted templates and a full audit log. This page is the live status of every
+      guard that makes that promise true.
+    </p>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-4">
+    <div class="score-card">
+      <div class="gauge-cap">Guards active</div>
+      <div class="gauge-ring" style="--val: {{ (100 * score / total) | int }}">
+        <div class="gauge-num">{{ score }}<small>/{{ total }}</small></div>
+      </div>
+      <div class="text-muted small">
+        {% if score == total %}
+          Every guard is on. Production-ready.
+        {% elif score >= total - 2 %}
+          Almost there — enable the remaining guards in <a href="{{ url_for('settings') }}">Settings</a>.
+        {% else %}
+          Several guards are off. Turn them on in <a href="{{ url_for('settings') }}">Settings</a>.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">shield</i> Guards</h5>
+        <span class="chip ghost">live status</span>
+      </div>
+      <div class="surface-body p-0">
+        {% for r in rows %}
+        <div class="guard-row">
+          <span class="guard-led {% if r.on %}on{% endif %}"></span>
+          <div class="guard-body">
+            <strong>{{ r.k }}</strong>
+            <small>{{ r.detail }}</small>
+          </div>
+          <span class="guard-state {% if r.on %}on{% else %}off{% endif %}">{{ 'ON' if r.on else 'OFF' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="action-grid mb-3">
+  <a class="action-card" href="{{ url_for('settings') }}">
+    <span class="ac-icn"><i class="material-icons-outlined">tune</i></span>
+    <span class="ac-body">
+      <div class="ac-title">Open Settings</div>
+      <div class="ac-sub">Toggle remaining guards in one place</div>
+    </span>
+  </a>
+  <a class="action-card" href="{{ url_for('privacy_console') }}">
+    <span class="ac-icn"><i class="material-icons-outlined">privacy_tip</i></span>
+    <span class="ac-body">
+      <div class="ac-title">Privacy console</div>
+      <div class="ac-sub">DPDP consent, encryption, retention</div>
+    </span>
+  </a>
+  <a class="action-card" href="{{ url_for('audit_view') }}">
+    <span class="ac-icn"><i class="material-icons-outlined">policy</i></span>
+    <span class="ac-body">
+      <div class="ac-title">Audit log</div>
+      <div class="ac-sub">Every admin action, ever</div>
+    </span>
+  </a>
+</div>
+
+{% endblock %}

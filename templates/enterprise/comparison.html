@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block crumb %}Enterprise Edition · Competitor Comparison{% endblock %}
+{% block page_title %}Where FaceMark wins{% endblock %}
+{% block page_sub %}vs. Rippling · UKG · ADP WFN · BambooHR · dedicated face-attendance players{% endblock %}
+{% block content %}
+
+<div class="page-stripe"></div>
+
+<div class="page-hero hero-violet">
+  <div class="ph-icn"><i class="material-icons">leaderboard</i></div>
+  <div class="ph-body">
+    <h5>Four rows where only FaceMark says "Y"</h5>
+    <p>
+      Read the table row-by-row in a demo. Every row where a rival shows "–" or "~" is one
+      sentence in your pitch. The four green-only rows are your <strong>no-competition</strong>
+      talking points.
+    </p>
+  </div>
+</div>
+
+{% set ROWS = [
+  ('On-premise / no-cloud option',         'Y','–','–','–','–','~', True),
+  ('India data residency by default',      'Y','–','–','–','–','~', True),
+  ('Proxy-proof face + crowd voting',      'Y','~','~','~','–','~', False),
+  ('Deepfake / injection liveness (N5)',   'Y','–','–','–','–','–', True),
+  ('SSO / SCIM (N1/N2)',                   'Y','Y','Y','Y','Y','–', False),
+  ('HRMS / payroll depth (N15)',           'Y','Y','Y','Y','Y','~', False),
+  ('AI Copilot + analytics (N13/14)',      'Y','Y','Y','~','~','–', False),
+  ('Physical access / tailgating (N6)',    'Y','~','~','~','–','~', False),
+  ('White-label / reseller (N18)',         'Y','–','–','–','–','~', True),
+  ('SMB-to-mid price band',                'Y','~','–','–','Y','Y', False),
+] %}
+
+{% macro cell(v) %}
+  {% if v == 'Y' %}
+    <span class="badge-soft-emerald badge" style="font-weight:800;">Y</span>
+  {% elif v == '~' %}
+    <span class="badge-soft-amber badge">~</span>
+  {% else %}
+    <span class="badge-soft-rose badge">–</span>
+  {% endif %}
+{% endmacro %}
+
+<div class="card surface">
+  <div class="surface-head">
+    <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">grid_on</i> Capability matrix</h5>
+    <span class="chip ghost">Y native · ~ partial / add-on · – absent</span>
+  </div>
+  <div class="surface-body p-0">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Capability</th>
+          <th class="text-center" style="background:#eef2ff;color:#4338ca;">FaceMark</th>
+          <th class="text-center">Rippling</th>
+          <th class="text-center">UKG</th>
+          <th class="text-center">ADP WFN</th>
+          <th class="text-center">BambooHR</th>
+          <th class="text-center">Face-attend.<br><small>players</small></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, fm, ri, uk, ad, bh, fa, win in ROWS %}
+        <tr {% if win %}style="background: linear-gradient(90deg, rgba(16,185,129,0.06), transparent);"{% endif %}>
+          <td>
+            <strong>{{ label }}</strong>
+            {% if win %}<span class="badge-soft-emerald badge ms-2">FaceMark only</span>{% endif %}
+          </td>
+          <td class="text-center" style="background:#fafbff;">{{ cell(fm) }}</td>
+          <td class="text-center">{{ cell(ri) }}</td>
+          <td class="text-center">{{ cell(uk) }}</td>
+          <td class="text-center">{{ cell(ad) }}</td>
+          <td class="text-center">{{ cell(bh) }}</td>
+          <td class="text-center">{{ cell(fa) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row g-3 mt-3">
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#10b981">verified_user</i> The no-competition moat</h5>
+      </div>
+      <div class="surface-body">
+        <p class="lead" style="font-size:1.05rem; line-height:1.5;">
+          "The global suites are <strong>cloud-only</strong> and store your biometrics off-shore.
+          The cheap machines have <strong>no security or integration</strong>. FaceMark is the
+          <em>only</em> system that is on-premise, India-resident, proxy-proof against deepfakes,
+          AND enterprise-ready (SSO, audit, payroll) — at a price below the global platforms."
+        </p>
+        <p class="text-muted small">Lead every corporate conversation with that sentence.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#f59e0b">support_agent</i> Objection cheat-sheet</h5>
+      </div>
+      <div class="surface-body p-0">
+        {% set OBJ = [
+          ('We already use Rippling/ADP/Keka for HR.',
+           'FaceMark doesn\'t replace it — it\'s the proxy-proof time layer that feeds them (N15 connectors). Their face capture is cloud and basic; yours is on-prem and unspoofable.'),
+          ('Face data is a privacy/legal risk.',
+           'That\'s our strongest point: on-prem, India-resident, encrypted with your own key (N7), with a SOC2/ISO evidence pack (N4) and DPDP consent flows.'),
+          ('Will it work for our hybrid/remote staff?',
+           'Yes — Teams/Slack check-in (N9) and Wi-Fi/VPN presence (N10) cover desk-less and remote workers, not just kiosk users.'),
+          ('Can it scale across our branches?',
+           'Multi-tenant control plane (N17) + offline edge sync (N20) run many sites under one console.'),
+          ('Why not a cheap biometric machine?',
+           'Those have no SSO, no analytics, no security posture, no integration. You\'d fail your own IT audit. FaceMark is the only option that is both affordable and enterprise-ready.'),
+        ] %}
+        {% for q, a in OBJ %}
+        <div class="px-3 py-3" style="border-bottom: 1px solid var(--surface-line);">
+          <div style="font-weight:700; color:#b91c1c;">↳ "{{ q }}"</div>
+          <div class="text-muted small mt-1">{{ a }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block page_title %}Transport · Bus tracking{% endblock %}
+{% block page_sub %}Boarding events + parent alerts{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-amber">
+  <div class="ph-icn"><i class="material-icons">directions_bus</i></div>
+  <div class="ph-body">
+    <h5>{{ routes|length }} route{{ '' if routes|length == 1 else 's' }} · {{ boardings|length }} recent boardings</h5>
+    <p>Tablets at the bus door post to <code>/api/transport/board</code>.
+       Guardians receive SMS/WhatsApp alerts on board / alight.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card surface mb-3">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">route</i> Routes</h5>
+        <span class="chip ghost">{{ routes|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Name</th><th>Driver</th><th>Vehicle</th><th>Branch</th><th></th></tr></thead>
+          <tbody>
+            {% for r in routes %}
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <span class="avatar">{{ r.name[0] | upper }}</span>
+                  <strong>{{ r.name }}</strong>
+                </div>
+              </td>
+              <td>{{ r.driver or '—' }}</td>
+              <td><span class="mono">{{ r.vehicle_no or '—' }}</span></td>
+              <td>{{ r.branch_name or '—' }}</td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-ghost" href="{{ url_for('transport_stops', rid=r.id) }}">
+                  <i class="material-icons md-16">edit_location</i> Stops
+                </a>
+                <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
+                  <input type="hidden" name="delete" value="{{ r.id }}">
+                  <button class="btn btn-sm btn-danger-soft">×</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">
+              <div class="empty">
+                <i class="material-icons-outlined">no_transfer</i>
+                <strong>No routes yet</strong>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">timeline</i> Recent boardings</h5>
+        <span class="chip ghost">{{ boardings|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>When</th><th>Person</th><th>Route</th><th>Stop</th><th>Direction</th></tr></thead>
+          <tbody>
+            {% for b in boardings %}
+            <tr>
+              <td><span class="mono">{{ b.seen_at }}</span></td>
+              <td><strong>{{ b.person_name or b.person_id }}</strong></td>
+              <td>{{ b.route_name or '—' }}</td>
+              <td>{{ b.stop_name or '—' }}</td>
+              <td>
+                {% if b.direction == 'board' %}
+                  <span class="status-chip success"><span class="dot"></span> board</span>
+                {% else %}
+                  <span class="status-chip"><span class="dot"></span> alight</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-4">No boardings logged.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">add_road</i> Add route</h5>
+      </div>
+      <div class="surface-body">
+        <form method="POST">
+          <div class="fld"><label>Route name</label><input name="name" class="form-control" placeholder="Kothrud Express" required></div>
+          <div class="fld"><label>Driver</label><input name="driver" class="form-control"></div>
+          <div class="fld"><label>Vehicle number</label><input name="vehicle_no" class="form-control" placeholder="MH-12 AB 1234"></div>
+          <div class="fld">
+            <label>Branch</label>
+            <select name="branch_id" class="form-select">
+              <option value="">All branches</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">add</i> Add route
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

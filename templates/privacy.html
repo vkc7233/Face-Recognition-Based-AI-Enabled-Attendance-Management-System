@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block page_title %}Privacy console{% endblock %}
+{% block page_sub %}DPDP / GDPR consent · encryption · retention · erasure{% endblock %}
+{% block content %}
+
+<div class="page-hero hero-rose">
+  <div class="ph-icn"><i class="material-icons">privacy_tip</i></div>
+  <div class="ph-body">
+    <h5>What this page does</h5>
+    <p>Records explicit biometric consent (with an HMAC-signed proof), encrypts
+       face crops at rest with AES-256, auto-purges old data on a policy clock,
+       and supports one-click right-to-erasure under DPDP §11 / GDPR Art 17.</p>
+  </div>
+</div>
+
+<div class="stat-strip">
+  <div class="stat-tile success">
+    <div class="st-label">Consents on file</div>
+    <div class="st-value">{{ consents|length }}</div>
+    <div class="st-sub">HMAC-signed</div>
+  </div>
+  <div class="stat-tile accent">
+    <div class="st-label">Encryption</div>
+    <div class="st-value">{{ 'ON' if settings.get('encrypt_templates') == '1' else 'OFF' }}</div>
+    <div class="st-sub">AES-256-GCM</div>
+  </div>
+  <div class="stat-tile warn">
+    <div class="st-label">Erasure requests</div>
+    <div class="st-value">{{ erasures|length }}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="st-label">Visitor retention</div>
+    <div class="st-value">{{ settings.get('retention_visitors_days','30') }}<small>d</small></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card surface mb-3">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">lock</i> Encryption</h5>
+        {% if settings.get('encrypt_templates') == '1' %}
+          <span class="pill pill-good"><i class="material-icons md-16">verified</i> ON</span>
+        {% else %}
+          <span class="pill pill-warn"><i class="material-icons md-16">lock_open</i> OFF</span>
+        {% endif %}
+      </div>
+      <div class="surface-body">
+        <p class="text-muted mb-3">
+          Encrypt all face crops on disk. Future enrolments are encrypted automatically.
+        </p>
+        <form method="POST" action="{{ url_for('privacy_encrypt_now') }}"
+              onsubmit="return confirm('Encrypt every face crop on disk now?')">
+          <button class="btn btn-primary w-100">
+            <i class="material-icons md-16">lock</i> Encrypt all existing templates
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">delete_sweep</i> Retention</h5>
+      </div>
+      <div class="surface-body">
+        <ul class="capsule-list">
+          <li><span class="cl-label">Visitor snapshots</span><span class="cl-val">{{ settings.get('retention_visitors_days','30') }} d</span></li>
+          <li><span class="cl-label">Notifications log</span><span class="cl-val">{{ settings.get('retention_notifications_days','90') }} d</span></li>
+          <li><span class="cl-label">Audit log</span><span class="cl-val">{{ settings.get('retention_audit_days','365') }} d</span></li>
+          <li><span class="cl-label">GPS marks</span><span class="cl-val">{{ settings.get('retention_gps_days','365') }} d</span></li>
+        </ul>
+        <a class="btn btn-ghost btn-sm w-100 mt-2" href="{{ url_for('settings') }}">
+          <i class="material-icons md-16">edit</i> Edit in Settings
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card surface mb-3">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">how_to_reg</i> Consents on file</h5>
+        <span class="chip ghost">{{ consents|length }}</span>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Person</th><th>Purpose</th><th>When</th><th>State</th><th>Proof sig</th></tr></thead>
+          <tbody>
+            {% for c in consents %}
+            <tr>
+              <td><span class="mono">#{{ c.person_id }}</span></td>
+              <td><span class="badge-soft badge">{{ c.purpose }}</span></td>
+              <td><span class="mono">{{ c.granted_at }}</span></td>
+              <td>
+                {% if c.granted %}<span class="status-chip success"><span class="dot"></span> granted</span>
+                {% else %}<span class="status-chip danger"><span class="dot"></span> revoked</span>{% endif %}
+              </td>
+              <td><code class="text-muted small">{{ (c.proof_sig or '')[:12] }}…</code></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">
+              <div class="empty">
+                <i class="material-icons-outlined">verified_user</i>
+                <strong>No consents recorded yet</strong>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="surface-body" style="border-top:1px solid var(--surface-line);">
+        <h6 class="mb-2 text-muted small text-uppercase">Record consent</h6>
+        <form method="POST" action="{{ url_for('privacy_consent') }}" class="row g-2">
+          <div class="col-md-3"><input name="person_id" class="form-control" placeholder="Person ID" required></div>
+          <div class="col-md-3">
+            <select name="purpose" class="form-select">
+              <option value="biometric">Biometric template</option>
+              <option value="notifications">Notifications</option>
+              <option value="payroll">Payroll integration</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select name="granted" class="form-select">
+              <option value="1">Granted</option><option value="0">Revoked</option>
+            </select>
+          </div>
+          <div class="col-md-3"><input name="proof_text" class="form-control" placeholder="Proof wording"></div>
+          <div class="col-md-1"><button class="btn btn-primary w-100">Save</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card surface">
+      <div class="surface-head">
+        <h5 class="m-0"><i class="material-icons" style="color:#a5b4fc">delete_forever</i> Erasure requests</h5>
+      </div>
+      <div class="surface-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>Person</th><th>Requested</th><th>Fulfilled</th><th>By</th></tr></thead>
+          <tbody>
+            {% for e in erasures %}
+            <tr>
+              <td><span class="mono">#{{ e.person_id }}</span></td>
+              <td><span class="mono">{{ e.requested_at }}</span></td>
+              <td>
+                {% if e.fulfilled_at %}<span class="status-chip success"><span class="dot"></span> done</span>
+                {% else %}<span class="status-chip warn"><span class="dot"></span> pending</span>{% endif %}
+              </td>
+              <td>{{ e.actor or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No erasures requested.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
