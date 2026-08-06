@@ -2226,9 +2226,18 @@ def parent_pack(pid):
 
 
 # ===========================================================================
+# Bootstrap. This must run on *import*, not just under `python app.py`, so that
+# WSGI servers (gunicorn app:app, as used by the Dockerfile) get a created
+# schema and seeded admin. Without it every request 500s with
+# "no such table: settings". Both calls are idempotent.
+ensure_dirs()
+db.init_db()
+
+
 if __name__ == '__main__':
-    ensure_dirs()
-    db.init_db()
+    # Background threads stay here: they do not survive gunicorn's fork() when
+    # preload_app is on, and starting them per-worker would duplicate the
+    # nightly jobs. See gunicorn post_fork if you need them in production.
     scheduler.start()
     ent_siem.start()
     app.run(debug=True)

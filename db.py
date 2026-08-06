@@ -722,7 +722,15 @@ CREATE TABLE IF NOT EXISTS sdk_calls (
     ms          INTEGER,
     seen_at     TEXT NOT NULL
 );
+"""
 
+# Indexes live in a separate script because several of them target columns that
+# are added by the ALTER TABLE migrations in init_db() (persons.branch_id,
+# persons.rfid_uid, admin_users.sso_subject, ...). Executing them as part of
+# SCHEMA works only on a database that has already been migrated once — on a
+# genuinely empty file it fails with "no such column: branch_id". init_db()
+# therefore runs SCHEMA, then the migrations, then SCHEMA_INDEXES.
+SCHEMA_INDEXES = """
 -- Indexes added in the optimization pass
 CREATE INDEX IF NOT EXISTS idx_attendance_person      ON attendance(person_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_attendance_late        ON attendance(date, is_late);
@@ -784,6 +792,10 @@ def init_db(default_admin: tuple[str, str] | None = ('admin', 'admin123')) -> No
         ):
             if col not in au_cols:
                 c.execute(f'ALTER TABLE admin_users ADD COLUMN {col} {ddl}')
+
+        # Indexes: must come after the migrations above, since several of them
+        # target columns those migrations add.
+        c.executescript(SCHEMA_INDEXES)
 
         # Seed settings
         for k, v in DEFAULT_SETTINGS.items():
