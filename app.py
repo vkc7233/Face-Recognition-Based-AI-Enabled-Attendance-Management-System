@@ -200,10 +200,19 @@ _just_captured: dict[str, dict] = {}            # person_id -> {expires, name, l
 
 # ---------------------------------------------------------------------------
 def ensure_dirs():
-    os.makedirs(FACES_DIR, exist_ok=True)
-    os.makedirs(PROFILE_DIR, exist_ok=True)
-    os.makedirs(VISITOR_DIR, exist_ok=True)
-    os.makedirs(PPE_DIR, exist_ok=True)
+    """Create the media directories, tolerating dangling symlinks.
+
+    The Docker image points these at the /data volume (static/faces ->
+    /data/static_faces) but only creates /data itself, so on a fresh container
+    they are symlinks to targets that do not exist yet. os.makedirs(exist_ok=True)
+    raises FileExistsError on those: mkdir() fails with EEXIST because the link
+    occupies the name, and the exist_ok guard then calls os.path.isdir(), which
+    follows the link to nothing and returns False, so the error is re-raised.
+    Creating os.path.realpath(d) instead creates the *target*, which makes the
+    link resolve. realpath() is a no-op for a plain directory.
+    """
+    for d in (FACES_DIR, PROFILE_DIR, VISITOR_DIR, PPE_DIR):
+        os.makedirs(os.path.realpath(d), exist_ok=True)
 
 
 def total_registered() -> int:
