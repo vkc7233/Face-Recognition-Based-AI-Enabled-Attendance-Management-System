@@ -911,16 +911,58 @@ body {
 
 /* ─────────── Mobile ─────────── */
 @media (max-width: 820px) {
-  .app-shell { grid-template-columns: 0 1fr; }
+  /* The sidebar goes position:fixed below, which takes it out of the grid flow.
+     .main then auto-places into the FIRST track — so the old `0 1fr` collapsed
+     .main to 0px wide, and overflow-x:hidden clipped the whole page, leaving
+     only the body gradient and the position:fixed Copilot button visible.
+     A single track is correct here: the sidebar overlays as a drawer rather
+     than occupying a column.
+     .shell-collapsed is listed too because its specificity (0,2,0) beats a bare
+     .app-shell (0,1,0) regardless of the media query, and would otherwise put a
+     76px first track back as soon as the menu is opened. */
+  .app-shell,
+  .app-shell.shell-collapsed { grid-template-columns: 1fr; }
   .sidebar {
     position: fixed; left: -100%; top: 0;
     width: var(--side-w); height: 100vh;
     z-index: 50; transition: left 0.2s;
   }
   .sidebar.collapsed { left: 0; }
+  /* The drawer opens at full width on mobile, so undo the desktop icon-only
+     collapse — one toggle sets both .collapsed and .shell-collapsed. */
+  .sidebar.collapsed .brand-name,
+  .sidebar.collapsed .side-link span,
+  .sidebar.collapsed .side-card,
+  .sidebar.collapsed .side-section { display: revert; }
+  .sidebar.collapsed .side-link { justify-content: flex-start; }
   .topbar { padding: 14px 18px; }
   .content { padding: 16px 18px 22px; }
-  .main { height: 100vh; }
+  /* dvh excludes the retracting mobile URL bar; the vh line is the fallback. */
+  .app-shell { height: 100vh; height: 100dvh; }
+  .main { height: 100vh; height: 100dvh; }
+
+  /* The topbar is a single nowrap flex row on desktop. At phone widths the five
+     status pills cannot fit beside the title, so they crushed .topbar-title
+     (flex:1, min-width:0) down to a couple of characters and overlapped it.
+     Wrap the row and give the pills their own line rather than hiding status. */
+  .topbar { flex-wrap: wrap; row-gap: 10px; }
+  /* flex-basis 0 (not auto) so the title shares row 1 with the hamburger
+     instead of being pushed onto a row of its own. */
+  .topbar-title { flex: 1 1 0; min-width: 0; }
+  .topbar-right { flex: 1 0 100%; flex-wrap: wrap; justify-content: flex-start; }
+  /* Two redundancies dropped so the sticky header stays short: the page
+     subtitle repeats the heading, and the "Online" pill tells you the server is
+     reachable — which you already know, because the page rendered. */
+  .topbar-title p { display: none; }
+  .topbar-right > span.pill:first-child { display: none; }
+
+  /* .ob-cta is flex-shrink:0, so the CTA button held its full width and squeezed
+     .ob-body to ~70px — the copy wrapped one word per line. Let the banner wrap
+     and put the button on its own full-width row. */
+  .onboard-banner { flex-wrap: wrap; }
+  .onboard-banner .ob-body { flex: 1 1 60%; }
+  .onboard-banner .ob-cta { flex: 1 0 100%; }
+  .onboard-banner .ob-cta .btn { width: 100%; }
 }
 
 /* ============================================================
