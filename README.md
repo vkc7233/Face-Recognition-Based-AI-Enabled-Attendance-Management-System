@@ -18,7 +18,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open <http://localhost:5000>. First login is `admin / admin123` — change it
+Open (`https://face-recognition-based-ai-enabled.onrender.com/`). First login is `admin / admin123` — change it
 immediately in Settings.
 
 ### Docker (one command)
@@ -27,7 +27,7 @@ immediately in Settings.
 docker compose up -d
 ```
 
-Then visit <http://localhost:8000>. State persists in the `data` volume.
+Then visit <`https://face-recognition-based-ai-enabled.onrender.com/`>. State persists in the `data` volume.
 
 ## Configuration
 
