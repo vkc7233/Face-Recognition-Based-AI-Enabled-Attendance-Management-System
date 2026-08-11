@@ -20,6 +20,7 @@ import os
 import re
 import io
 import csv
+import base64
 import logging
 import time
 from collections import defaultdict, deque
@@ -72,10 +73,15 @@ from cctv_wall import cctv_bp
 
 # ---------------------------------------------------------------------------
 NIMGS = 25
-FACES_DIR = os.path.join('static', 'faces')
-PROFILE_DIR = os.path.join('static', 'profiles')
-VISITOR_DIR = os.path.join('static', 'visitors')
-PPE_DIR = os.path.join('static', 'ppe')
+# Anchored to this file rather than the CWD: a supervisor that starts the app
+# from another directory (systemd without WorkingDirectory=, a cron wrapper)
+# would otherwise create a second, empty set of media folders next to itself
+# and enrol into those instead of the real ones.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FACES_DIR = os.path.join(BASE_DIR, 'static', 'faces')
+PROFILE_DIR = os.path.join(BASE_DIR, 'static', 'profiles')
+VISITOR_DIR = os.path.join(BASE_DIR, 'static', 'visitors')
+PPE_DIR = os.path.join(BASE_DIR, 'static', 'ppe')
 VISITOR_COOLDOWN_SEC = 30        # max one snapshot per face slot in this window
 
 app = Flask(__name__)
@@ -359,7 +365,310 @@ def _draw_label(frame, x, y, w, h, text, color):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
 
+def _pipeline_settings() -> dict:
+    """Read the per-frame tunables once. gen_frames() hoists this out of its
+    loop; the browser-camera HTTP endpoint calls it per request."""
+    return {
+        'threshold':  float(db.get_setting('recognition_threshold', '80')),
+        'work_start': db.get_setting('work_start_time', '09:00'),
+        'late_min':   int(db.get_setting('late_threshold_min', '15')),
+        'gap_min':    int(db.get_setting('min_checkout_gap_min', '30')),
+    }
+
+
+def process_frame(frame, mode, rec, threshold, work_start, late_min, gap_min):
+    """Run one BGR frame through the detect -> recognise / enrol pipeline.
+
+    Annotates `frame` **in place** (boxes, labels, liveness hints, PPE
+    warnings, the enrol progress bar, the HUD) and returns a metadata dict.
+
+    Extracted verbatim from the body of gen_frames() so the server-camera
+    MJPEG stream and the browser-camera endpoint share one implementation.
+    A hosted deployment has no webcam of its own, so /api/camera/frame feeds
+    frames captured by the operator's browser through this exact code path.
+    """
+    recognized_count = 0
+    per_face = []
+
+    # `threshold` arrives on the LBPH scale (that is what the settings page
+    # edits). Project it onto whichever backend is actually loaded, or the
+    # comparison below is meaningless on the KNN and embedding backends.
+    threshold = recognizer.scale_threshold(threshold, rec)
+
+    faces = face_utils.detect_faces(frame)
+
+    if mode == 'recognise' and rec.is_trained():
+        now_ts = time.time()
+        recognized_count = 0
+
+        # 1) Predict every face and grow the per-identity vote buffer
+        per_face = []   # list of dicts: { bbox, label, conf }
+        for (x, y, w, h) in faces:
+            crop = frame[y:y + h, x:x + w]
+            gray = face_utils.preprocess(crop)
+            label, conf = rec.predict(gray)
+            accepted = label is not None and conf <= threshold
+            if accepted:
+                _vote_buffer[label].append((now_ts, conf))
+            per_face.append({'bbox': (x, y, w, h),
+                             'label': label if accepted else None,
+                             'conf': conf})
+
+        # 2) Prune stale votes
+        cutoff = now_ts - CROWD_VOTE_WINDOW
+        for k in list(_vote_buffer.keys()):
+            while _vote_buffer[k] and _vote_buffer[k][0][0] < cutoff:
+                _vote_buffer[k].popleft()
+            if not _vote_buffer[k]:
+                del _vote_buffer[k]
+
+        # 3) For each face, decide its visual state
+        for f in per_face:
+            x, y, w, h = f['bbox']
+            label = f['label']
+            conf = f['conf']
+
+            if label and len(_vote_buffer.get(label, [])) >= CROWD_VOTES_NEEDED:
+                # Confirmed identity
+                _, pid = split_user_folder(label)
+                last = _recent_marks.get(pid, 0)
+                person = db.get_person(pid)
+                nm = person['name'] if person else label.rsplit('_', 1)[0]
+
+                # ── LIVENESS gate ────────────────────────────────
+                liveness_on = (db.get_setting('liveness_enabled') or '1') == '1'
+                live_state = liveness.tracker().update(
+                    liveness.make_face_id(label, (x, y, w, h)),
+                    (x, y, w, h), frame[y:y + h, x:x + w])
+                live_ok = (not liveness_on) or live_state['live']
+
+                # ── MASK detection (advisory) ────────────────────
+                mask_required = (db.get_setting('mask_required') or '0') == '1'
+                if mask_required:
+                    m_state = safety.detect_mask(frame[y:y + h, x:x + w])
+                    if not m_state['mask']:
+                        _draw_label(frame, x, y, w, h,
+                                    f'Mask required (cov {m_state["coverage"]:.2f})',
+                                    (220, 200, 60))
+                        continue
+
+                # ── PPE gate (site mode only) ────────────────────
+                site_mode = (db.get_setting('site_mode_enabled') or '0') == '1'
+                ppe_required = (db.get_setting('ppe_required') or 'helmet,vest').split(',')
+                ppe_state = None
+                if site_mode:
+                    ppe_state = ppe.detect(frame, (x, y, w, h))
+                    missing = []
+                    if 'helmet' in ppe_required and not ppe_state['helmet']:
+                        missing.append('helmet')
+                    if 'vest' in ppe_required and not ppe_state['vest']:
+                        missing.append('vest')
+                    if missing:
+                        # log + visually flag, don't mark attendance
+                        snap_name = f'ppe_{pid}_{int(now_ts)}.jpg'
+                        try:
+                            cv2.imwrite(os.path.join(PPE_DIR, snap_name),
+                                        cv2.resize(frame[max(0, y-20):y+h+80,
+                                                         max(0, x-30):x+w+30], (300, 360)))
+                            db.log_ppe_incident(
+                                pid, person['branch_id'] if person else None,
+                                ','.join([k for k in ('helmet', 'vest')
+                                          if ppe_state.get(k)]),
+                                ','.join(missing),
+                                f'ppe/{snap_name}')
+                        except Exception as e:  # noqa: BLE001
+                            log.warning('ppe snap failed: %s', e)
+                        _draw_label(frame, x, y, w, h,
+                                    f'PPE missing: {" + ".join(missing)}',
+                                    (39, 39, 220))
+                        continue
+
+                if now_ts - last > CROWD_MARK_COOLDOWN and live_ok:
+                    try:
+                        res = db.mark_attendance(pid, work_start, late_min, gap_min)
+                        # Active class session? mark there too
+                        active_sid = (db.get_setting('active_session_id') or '').strip()
+                        if active_sid.isdigit():
+                            db.mark_session_attendance(int(active_sid), pid)
+                        # Notifications + webhook
+                        if person:
+                            notify.notify_attendance(
+                                dict(person), res.get('event', 'check_in'),
+                                res.get('time', ''),
+                                db.get_setting('org_name') or 'FaceMark')
+                        dispatch_event(res.get('event', 'check_in'),
+                                       {'person_id': pid, **res})
+                        # Door relay (if configured)
+                        if (db.get_setting('door_relay_url') or '').strip():
+                            safety.trigger_door(
+                                person['branch_id'] if person else None, pid)
+                    except Exception as e:  # noqa: BLE001
+                        log.warning('mark_attendance failed: %s', e)
+                    _recent_marks[pid] = now_ts
+                    _just_captured[pid] = {
+                        'expires': now_ts + CAPTURE_FLASH_SECONDS,
+                        'name': nm,
+                        'bbox': (x, y, w, h),
+                    }
+                elif liveness_on and not live_ok:
+                    # Liveness still pending — draw amber "blink please"
+                    tags = []
+                    if not live_state['blink_ok']:  tags.append('blink')
+                    if not live_state['motion_ok']: tags.append('motion')
+                    if not live_state['texture_ok']: tags.append('texture')
+                    _draw_label(frame, x, y, w, h,
+                                f'Liveness: {"+".join(tags)}',
+                                (39, 174, 240))
+                    continue
+
+                # Capture-flash overlay if we marked them recently
+                flashing = (pid in _just_captured and
+                            _just_captured[pid]['expires'] > now_ts)
+                color = (46, 204, 113) if not flashing else (39, 174, 96)
+                _draw_label(frame, x, y, w, h, f'{nm}  ({conf:.0f})', color)
+                if flashing:
+                    # green corner check + "CAPTURED" tag
+                    cv2.putText(frame, '✓ CAPTURED', (x, y + h + 22),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                                (39, 174, 96), 2)
+                    cv2.circle(frame, (x + w - 14, y + 14), 9,
+                               (39, 174, 96), -1)
+                    cv2.putText(frame, 'OK', (x + w - 22, y + 18),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                                (255, 255, 255), 1)
+                recognized_count += 1
+
+            elif label:
+                # Recognised but not yet enough votes
+                votes_have = len(_vote_buffer.get(label, []))
+                _draw_label(frame, x, y, w, h,
+                            f'Verifying {votes_have}/{CROWD_VOTES_NEEDED}',
+                            (241, 196, 15))
+            else:
+                _draw_label(frame, x, y, w, h, 'Unknown', (148, 148, 148))
+                # Log unknown face (once per VISITOR_COOLDOWN_SEC) for security
+                global _visitor_cooldown
+                if now_ts - _visitor_cooldown > VISITOR_COOLDOWN_SEC:
+                    try:
+                        fname = f'visitor_{int(now_ts)}.jpg'
+                        cv2.imwrite(os.path.join(VISITOR_DIR, fname),
+                                    cv2.resize(frame[y:y + h, x:x + w], (200, 200)))
+                        db.log_visitor(f'visitors/{fname}', camera='Main')
+                        _visitor_cooldown = now_ts
+                    except Exception as e:  # noqa: BLE001
+                        log.warning('visitor snap failed: %s', e)
+
+        # 4) Clear stale capture flashes
+        for pid in list(_just_captured.keys()):
+            if _just_captured[pid]['expires'] < now_ts:
+                del _just_captured[pid]
+
+        # 5) Exam continuous-presence (if an exam is active)
+        exam = db.get_active_exam()
+        if exam:
+            recognised_pids = [f['label'].rsplit('_', 1)[1]
+                               for f in per_face
+                               if f['label'] and '_' in f['label']]
+            unknown = [f['bbox'] for f in per_face if not f['label']]
+            alerts = exam_mode.observe(exam, recognised_pids, unknown)
+            if alerts:
+                cv2.putText(frame, f'EXAM ALERTS: {len(alerts)}',
+                            (15, frame.shape[0] - 18),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                            (40, 40, 255), 2)
+
+        # 6) HUD top-right
+        hud = f'Faces: {len(faces)}  Recognized: {recognized_count}'
+        (tw, th), _b = cv2.getTextSize(hud, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        fw = frame.shape[1]
+        cv2.rectangle(frame, (fw - tw - 24, 12),
+                      (fw - 8, 12 + th + 14), (0, 0, 0), -1)
+        cv2.putText(frame, hud, (fw - tw - 16, 12 + th + 4),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    elif mode == 'register':
+        _capture_mode['frame_idx'] += 1
+        for (x, y, w, h) in faces:
+            crop = frame[y:y + h, x:x + w]
+            sharp = face_utils.quality_score(crop)
+            too_blurry = sharp < face_utils.BLUR_THRESHOLD
+            color = (52, 152, 219) if not too_blurry else (0, 100, 200)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+
+            cv2.putText(frame, f'Sharpness {sharp:.0f}',
+                        (x, y + h + 22), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.55, color, 2)
+
+            if (not too_blurry and
+                    _capture_mode['frame_idx'] % 4 == 0 and
+                    _capture_mode['count'] < NIMGS):
+                folder = os.path.join(
+                    FACES_DIR,
+                    f"{_capture_mode['username']}_{_capture_mode['userid']}"
+                )
+                os.makedirs(folder, exist_ok=True)
+                fname = f"{_capture_mode['username']}_{_capture_mode['count']}.jpg"
+                cv2.imwrite(os.path.join(folder, fname), crop)
+
+                # save the first sharp crop as the profile thumbnail
+                if _capture_mode['count'] == 0:
+                    os.makedirs(PROFILE_DIR, exist_ok=True)
+                    cv2.imwrite(
+                        os.path.join(PROFILE_DIR, f"{_capture_mode['userid']}.jpg"),
+                        cv2.resize(crop, (160, 160))
+                    )
+
+                _capture_mode['count'] += 1
+                _capture_mode['sharp_total'] += sharp
+
+        pct = int(100 * _capture_mode['count'] / NIMGS)
+        cv2.rectangle(frame, (15, 15), (15 + 250, 38), (0, 0, 0), -1)
+        cv2.rectangle(frame, (15, 15), (15 + int(250 * pct / 100), 38),
+                      (52, 152, 219), -1)
+        cv2.putText(frame, f"{_capture_mode['count']}/{NIMGS}",
+                    (175, 33), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                    (255, 255, 255), 2)
+        if _capture_mode['count'] >= NIMGS:
+            _capture_mode['mode'] = None
+            recognizer.retrain(FACES_DIR)
+            # Encrypt-at-rest if enabled. The original training samples are
+            # left in place so retraining stays fast; an admin can choose
+            # /privacy/encrypt-now to encrypt the legacy crops too.
+            if (db.get_setting('encrypt_templates') or '0') == '1':
+                folder = os.path.join(
+                    FACES_DIR,
+                    f"{_capture_mode['username']}_{_capture_mode['userid']}")
+                try:
+                    for f in os.listdir(folder):
+                        p = os.path.join(folder, f)
+                        if p.endswith('.jpg'):
+                            crypto_store.encrypt_file(p, p + '.enc',
+                                                      remove_src=True)
+                except Exception as e:  # noqa: BLE001
+                    log.warning('encrypt-on-enrol failed: %s', e)
+
+    else:
+        cv2.putText(frame, 'Idle', (15, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+
+    return {
+        'mode':       mode,
+        'faces':      len(faces),
+        'recognized': recognized_count,
+        'count':      _capture_mode['count'],
+        'target':     NIMGS,
+        # Plain ints, not numpy — jsonify cannot serialise np.int32.
+        'boxes':      [[int(x), int(y), int(w), int(h)] for (x, y, w, h) in faces],
+    }
+
+
 def gen_frames():
+    """MJPEG stream from a webcam attached to *this server*.
+
+    Only useful for on-premise installs. On a hosted platform (Render, Fly,
+    any container) there is no camera device, open_camera() returns None,
+    and the browser-camera path in /api/camera/frame is used instead.
+    """
     cap = open_camera()
     if cap is None:
         err = np.zeros((360, 640, 3), dtype=np.uint8)
@@ -370,10 +679,7 @@ def gen_frames():
         return
 
     try:
-        threshold = float(db.get_setting('recognition_threshold', '80'))
-        work_start = db.get_setting('work_start_time', '09:00')
-        late_min = int(db.get_setting('late_threshold_min', '15'))
-        gap_min = int(db.get_setting('min_checkout_gap_min', '30'))
+        cfg = _pipeline_settings()
         rec = recognizer.get()
 
         while True:
@@ -381,262 +687,7 @@ def gen_frames():
             if not ok:
                 break
 
-            mode = _capture_mode['mode']
-            faces = face_utils.detect_faces(frame)
-
-            if mode == 'recognise' and rec.is_trained():
-                now_ts = time.time()
-                recognized_count = 0
-
-                # 1) Predict every face and grow the per-identity vote buffer
-                per_face = []   # list of dicts: { bbox, label, conf }
-                for (x, y, w, h) in faces:
-                    crop = frame[y:y + h, x:x + w]
-                    gray = face_utils.preprocess(crop)
-                    label, conf = rec.predict(gray)
-                    accepted = label is not None and conf <= threshold
-                    if accepted:
-                        _vote_buffer[label].append((now_ts, conf))
-                    per_face.append({'bbox': (x, y, w, h),
-                                     'label': label if accepted else None,
-                                     'conf': conf})
-
-                # 2) Prune stale votes
-                cutoff = now_ts - CROWD_VOTE_WINDOW
-                for k in list(_vote_buffer.keys()):
-                    while _vote_buffer[k] and _vote_buffer[k][0][0] < cutoff:
-                        _vote_buffer[k].popleft()
-                    if not _vote_buffer[k]:
-                        del _vote_buffer[k]
-
-                # 3) For each face, decide its visual state
-                for f in per_face:
-                    x, y, w, h = f['bbox']
-                    label = f['label']
-                    conf = f['conf']
-
-                    if label and len(_vote_buffer.get(label, [])) >= CROWD_VOTES_NEEDED:
-                        # Confirmed identity
-                        _, pid = split_user_folder(label)
-                        last = _recent_marks.get(pid, 0)
-                        person = db.get_person(pid)
-                        nm = person['name'] if person else label.rsplit('_', 1)[0]
-
-                        # ── LIVENESS gate ────────────────────────────────
-                        liveness_on = (db.get_setting('liveness_enabled') or '1') == '1'
-                        live_state = liveness.tracker().update(
-                            liveness.make_face_id(label, (x, y, w, h)),
-                            (x, y, w, h), frame[y:y + h, x:x + w])
-                        live_ok = (not liveness_on) or live_state['live']
-
-                        # ── MASK detection (advisory) ────────────────────
-                        mask_required = (db.get_setting('mask_required') or '0') == '1'
-                        if mask_required:
-                            m_state = safety.detect_mask(frame[y:y + h, x:x + w])
-                            if not m_state['mask']:
-                                _draw_label(frame, x, y, w, h,
-                                            f'Mask required (cov {m_state["coverage"]:.2f})',
-                                            (220, 200, 60))
-                                continue
-
-                        # ── PPE gate (site mode only) ────────────────────
-                        site_mode = (db.get_setting('site_mode_enabled') or '0') == '1'
-                        ppe_required = (db.get_setting('ppe_required') or 'helmet,vest').split(',')
-                        ppe_state = None
-                        if site_mode:
-                            ppe_state = ppe.detect(frame, (x, y, w, h))
-                            missing = []
-                            if 'helmet' in ppe_required and not ppe_state['helmet']:
-                                missing.append('helmet')
-                            if 'vest' in ppe_required and not ppe_state['vest']:
-                                missing.append('vest')
-                            if missing:
-                                # log + visually flag, don't mark attendance
-                                snap_name = f'ppe_{pid}_{int(now_ts)}.jpg'
-                                try:
-                                    cv2.imwrite(os.path.join(PPE_DIR, snap_name),
-                                                cv2.resize(frame[max(0, y-20):y+h+80,
-                                                                 max(0, x-30):x+w+30], (300, 360)))
-                                    db.log_ppe_incident(
-                                        pid, person['branch_id'] if person else None,
-                                        ','.join([k for k in ('helmet', 'vest')
-                                                  if ppe_state.get(k)]),
-                                        ','.join(missing),
-                                        f'ppe/{snap_name}')
-                                except Exception as e:  # noqa: BLE001
-                                    log.warning('ppe snap failed: %s', e)
-                                _draw_label(frame, x, y, w, h,
-                                            f'PPE missing: {" + ".join(missing)}',
-                                            (39, 39, 220))
-                                continue
-
-                        if now_ts - last > CROWD_MARK_COOLDOWN and live_ok:
-                            try:
-                                res = db.mark_attendance(pid, work_start, late_min, gap_min)
-                                # Active class session? mark there too
-                                active_sid = (db.get_setting('active_session_id') or '').strip()
-                                if active_sid.isdigit():
-                                    db.mark_session_attendance(int(active_sid), pid)
-                                # Notifications + webhook
-                                if person:
-                                    notify.notify_attendance(
-                                        dict(person), res.get('event', 'check_in'),
-                                        res.get('time', ''),
-                                        db.get_setting('org_name') or 'FaceMark')
-                                dispatch_event(res.get('event', 'check_in'),
-                                               {'person_id': pid, **res})
-                                # Door relay (if configured)
-                                if (db.get_setting('door_relay_url') or '').strip():
-                                    safety.trigger_door(
-                                        person['branch_id'] if person else None, pid)
-                            except Exception as e:  # noqa: BLE001
-                                log.warning('mark_attendance failed: %s', e)
-                            _recent_marks[pid] = now_ts
-                            _just_captured[pid] = {
-                                'expires': now_ts + CAPTURE_FLASH_SECONDS,
-                                'name': nm,
-                                'bbox': (x, y, w, h),
-                            }
-                        elif liveness_on and not live_ok:
-                            # Liveness still pending — draw amber "blink please"
-                            tags = []
-                            if not live_state['blink_ok']:  tags.append('blink')
-                            if not live_state['motion_ok']: tags.append('motion')
-                            if not live_state['texture_ok']: tags.append('texture')
-                            _draw_label(frame, x, y, w, h,
-                                        f'Liveness: {"+".join(tags)}',
-                                        (39, 174, 240))
-                            continue
-
-                        # Capture-flash overlay if we marked them recently
-                        flashing = (pid in _just_captured and
-                                    _just_captured[pid]['expires'] > now_ts)
-                        color = (46, 204, 113) if not flashing else (39, 174, 96)
-                        _draw_label(frame, x, y, w, h, f'{nm}  ({conf:.0f})', color)
-                        if flashing:
-                            # green corner check + "CAPTURED" tag
-                            cv2.putText(frame, '✓ CAPTURED', (x, y + h + 22),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                                        (39, 174, 96), 2)
-                            cv2.circle(frame, (x + w - 14, y + 14), 9,
-                                       (39, 174, 96), -1)
-                            cv2.putText(frame, 'OK', (x + w - 22, y + 18),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.4,
-                                        (255, 255, 255), 1)
-                        recognized_count += 1
-
-                    elif label:
-                        # Recognised but not yet enough votes
-                        votes_have = len(_vote_buffer.get(label, []))
-                        _draw_label(frame, x, y, w, h,
-                                    f'Verifying {votes_have}/{CROWD_VOTES_NEEDED}',
-                                    (241, 196, 15))
-                    else:
-                        _draw_label(frame, x, y, w, h, 'Unknown', (148, 148, 148))
-                        # Log unknown face (once per VISITOR_COOLDOWN_SEC) for security
-                        global _visitor_cooldown
-                        if now_ts - _visitor_cooldown > VISITOR_COOLDOWN_SEC:
-                            try:
-                                fname = f'visitor_{int(now_ts)}.jpg'
-                                cv2.imwrite(os.path.join(VISITOR_DIR, fname),
-                                            cv2.resize(frame[y:y + h, x:x + w], (200, 200)))
-                                db.log_visitor(f'visitors/{fname}', camera='Main')
-                                _visitor_cooldown = now_ts
-                            except Exception as e:  # noqa: BLE001
-                                log.warning('visitor snap failed: %s', e)
-
-                # 4) Clear stale capture flashes
-                for pid in list(_just_captured.keys()):
-                    if _just_captured[pid]['expires'] < now_ts:
-                        del _just_captured[pid]
-
-                # 5) Exam continuous-presence (if an exam is active)
-                exam = db.get_active_exam()
-                if exam:
-                    recognised_pids = [f['label'].rsplit('_', 1)[1]
-                                       for f in per_face
-                                       if f['label'] and '_' in f['label']]
-                    unknown = [f['bbox'] for f in per_face if not f['label']]
-                    alerts = exam_mode.observe(exam, recognised_pids, unknown)
-                    if alerts:
-                        cv2.putText(frame, f'EXAM ALERTS: {len(alerts)}',
-                                    (15, frame.shape[0] - 18),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                                    (40, 40, 255), 2)
-
-                # 6) HUD top-right
-                hud = f'Faces: {len(faces)}  Recognized: {recognized_count}'
-                (tw, th), _b = cv2.getTextSize(hud, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-                fw = frame.shape[1]
-                cv2.rectangle(frame, (fw - tw - 24, 12),
-                              (fw - 8, 12 + th + 14), (0, 0, 0), -1)
-                cv2.putText(frame, hud, (fw - tw - 16, 12 + th + 4),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-
-            elif mode == 'register':
-                _capture_mode['frame_idx'] += 1
-                for (x, y, w, h) in faces:
-                    crop = frame[y:y + h, x:x + w]
-                    sharp = face_utils.quality_score(crop)
-                    too_blurry = sharp < face_utils.BLUR_THRESHOLD
-                    color = (52, 152, 219) if not too_blurry else (0, 100, 200)
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-
-                    cv2.putText(frame, f'Sharpness {sharp:.0f}',
-                                (x, y + h + 22), cv2.FONT_HERSHEY_SIMPLEX,
-                                0.55, color, 2)
-
-                    if (not too_blurry and
-                            _capture_mode['frame_idx'] % 4 == 0 and
-                            _capture_mode['count'] < NIMGS):
-                        folder = os.path.join(
-                            FACES_DIR,
-                            f"{_capture_mode['username']}_{_capture_mode['userid']}"
-                        )
-                        os.makedirs(folder, exist_ok=True)
-                        fname = f"{_capture_mode['username']}_{_capture_mode['count']}.jpg"
-                        cv2.imwrite(os.path.join(folder, fname), crop)
-
-                        # save the first sharp crop as the profile thumbnail
-                        if _capture_mode['count'] == 0:
-                            os.makedirs(PROFILE_DIR, exist_ok=True)
-                            cv2.imwrite(
-                                os.path.join(PROFILE_DIR, f"{_capture_mode['userid']}.jpg"),
-                                cv2.resize(crop, (160, 160))
-                            )
-
-                        _capture_mode['count'] += 1
-                        _capture_mode['sharp_total'] += sharp
-
-                pct = int(100 * _capture_mode['count'] / NIMGS)
-                cv2.rectangle(frame, (15, 15), (15 + 250, 38), (0, 0, 0), -1)
-                cv2.rectangle(frame, (15, 15), (15 + int(250 * pct / 100), 38),
-                              (52, 152, 219), -1)
-                cv2.putText(frame, f"{_capture_mode['count']}/{NIMGS}",
-                            (175, 33), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                            (255, 255, 255), 2)
-                if _capture_mode['count'] >= NIMGS:
-                    _capture_mode['mode'] = None
-                    recognizer.retrain(FACES_DIR)
-                    # Encrypt-at-rest if enabled. The original training samples are
-                    # left in place so retraining stays fast; an admin can choose
-                    # /privacy/encrypt-now to encrypt the legacy crops too.
-                    if (db.get_setting('encrypt_templates') or '0') == '1':
-                        folder = os.path.join(
-                            FACES_DIR,
-                            f"{_capture_mode['username']}_{_capture_mode['userid']}")
-                        try:
-                            for f in os.listdir(folder):
-                                p = os.path.join(folder, f)
-                                if p.endswith('.jpg'):
-                                    crypto_store.encrypt_file(p, p + '.enc',
-                                                              remove_src=True)
-                        except Exception as e:  # noqa: BLE001
-                            log.warning('encrypt-on-enrol failed: %s', e)
-
-            else:
-                cv2.putText(frame, 'Idle', (15, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 2)
+            process_frame(frame, _capture_mode['mode'], rec, **cfg)
 
             ok, buf = cv2.imencode('.jpg', frame)
             if not ok:
@@ -701,6 +752,118 @@ def capture_status():
                     'count': _capture_mode['count'], 'target': NIMGS,
                     'sharp_avg': (_capture_mode['sharp_total'] / _capture_mode['count'])
                                   if _capture_mode['count'] else 0})
+
+
+# ---------------------------------------------------------------------------
+# Browser camera
+#
+# gen_frames() opens a camera attached to the machine running Python. That is
+# right for an on-premise box and useless on a hosted platform, where the
+# container has no camera device at all. These endpoints invert the direction:
+# the operator's browser captures from *its* webcam with getUserMedia and POSTs
+# individual JPEG frames here, which run through the same process_frame()
+# pipeline and come back annotated.
+#
+# Frames are handled one per request and never held between requests, so this
+# works unchanged behind multiple gunicorn workers.
+# ---------------------------------------------------------------------------
+MAX_FRAME_BYTES = 4 * 1024 * 1024
+
+
+def _enrol_folder(name: str, uid: str) -> str:
+    """Validate and build the enrolment folder path.
+
+    name/uid arrive from the client on every frame, so they are re-validated
+    here rather than trusted from the /add round trip — otherwise a crafted
+    POST could walk out of FACES_DIR.
+    """
+    if not re.match(r'^[A-Za-z0-9_.-]+$', name or '') or not (uid or '').isdigit():
+        raise ValueError('bad-identity')
+    folder = os.path.join(FACES_DIR, f'{name}_{uid}')
+    root = os.path.realpath(FACES_DIR)
+    if os.path.commonpath([os.path.realpath(folder), root]) != root:
+        raise ValueError('bad-identity')
+    return folder
+
+
+def _saved_sample_count(folder: str) -> int:
+    """Count enrolment crops already on disk.
+
+    The authoritative sample count lives on disk rather than in _capture_mode
+    because that dict is per-process: with `gunicorn -w 2` the POST that starts
+    enrolment and the POST carrying frame 12 can land on different workers.
+    """
+    try:
+        return len([f for f in os.listdir(folder)
+                    if f.endswith('.jpg') or f.endswith('.jpg.enc')])
+    except OSError:
+        return 0
+
+
+@app.route('/api/camera/frame', methods=['POST'])
+@login_required
+def camera_frame():
+    """Process one browser-captured frame and return it annotated."""
+    mode = (request.form.get('mode') or '').strip()
+    if mode not in ('recognise', 'register'):
+        return jsonify({'ok': False, 'error': 'bad-mode'}), 400
+
+    blob = request.files.get('frame')
+    if blob is None:
+        return jsonify({'ok': False, 'error': 'no-frame'}), 400
+    raw = blob.read(MAX_FRAME_BYTES + 1)
+    if not raw or len(raw) > MAX_FRAME_BYTES:
+        return jsonify({'ok': False, 'error': 'bad-frame-size'}), 400
+
+    frame = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+    if frame is None:
+        return jsonify({'ok': False, 'error': 'undecodable'}), 400
+
+    rec = recognizer.get()
+    if mode == 'recognise' and not rec.is_trained():
+        return jsonify({'ok': False, 'error': 'not-trained',
+                        'msg': 'No trained model. Register a user first.'}), 400
+
+    if mode == 'register':
+        name = (request.form.get('name') or '').strip()
+        uid = (request.form.get('uid') or '').strip()
+        try:
+            folder = _enrol_folder(name, uid)
+        except ValueError:
+            return jsonify({'ok': False, 'error': 'bad-identity'}), 400
+        os.makedirs(folder, exist_ok=True)
+        # frame_idx 3 so the pipeline's `% 4 == 0` sampling gate opens on this
+        # frame: the browser already throttles, so there is nothing to thin out.
+        _capture_mode.update({'mode': 'register', 'username': name, 'userid': uid,
+                              'count': _saved_sample_count(folder), 'frame_idx': 3,
+                              'sharp_total': 0.0})
+
+    meta = process_frame(frame, mode, rec, **_pipeline_settings())
+
+    payload = {
+        'ok': True,
+        'mode': mode,
+        'count': meta['count'],
+        'target': NIMGS,
+        'faces': meta['faces'],
+        'recognized': meta['recognized'],
+        'boxes': meta['boxes'],
+        'done': mode == 'register' and meta['count'] >= NIMGS,
+    }
+
+    # The annotated frame carries every visual affordance the desktop stream
+    # has (identity labels, liveness hints, PPE warnings, the HUD), so the
+    # recognition screens ask for it. Enrolment does not: it shows the local
+    # <video> at full frame rate and draws boxes from `boxes`, which keeps the
+    # response ~40 kB smaller per frame on a phone.
+    if request.form.get('want_image') == '1':
+        ok, buf = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 72])
+        if not ok:
+            return jsonify({'ok': False, 'error': 'encode-failed'}), 500
+        payload['image'] = ('data:image/jpeg;base64,'
+                            + base64.b64encode(buf.tobytes()).decode())
+
+    return jsonify(payload)
 
 
 # ---------------------------------------------------------------------------

@@ -18,10 +18,14 @@
         </a>
       </div>
       <div class="surface-body">
-        <div class="video-wrap">
-          <img src="{{ url_for('video_feed') }}?ts={{ uid }}" alt="">
+        <div class="video-wrap" id="videoWrap">
+          <!-- Live local preview at full frame rate; frames are sampled off
+               this element and POSTed for processing. -->
+          <video id="cam" autoplay playsinline muted></video>
+          <canvas id="overlay"></canvas>
           <div class="video-corner"><span class="rec-dot"></span> CAPTURING</div>
         </div>
+        <div id="camError" class="alert alert-warning mt-3" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -42,6 +46,7 @@
         <div class="progress big mt-3">
           <div id="capBar" class="progress-bar" style="width:0%"></div>
         </div>
+        <div id="capHint" class="text-muted small mt-3">Starting camera…</div>
 
         <ul class="checklist mt-4">
           <li><i class="material-icons-outlined">light_mode</i> Use even, front-on lighting</li>
@@ -56,25 +61,73 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/browser-camera.js') }}?v={{ asset_version }}" nonce="{{ csp_nonce() }}"></script>
 <script nonce="{{ csp_nonce() }}">
-  const target = {{ target }};
-  let last = -1;
-  async function poll() {
-    try {
-      const r = await fetch('/capture_status');
-      const j = await r.json();
-      if (j.count !== last) {
-        document.getElementById('capCount').textContent = j.count;
-        document.getElementById('capBar').style.width = Math.round(100 * j.count / target) + '%';
-        last = j.count;
-      }
-      if (j.mode === null && j.count >= target) {
-        window.location.href = '{{ url_for("home") }}';
-        return;
-      }
-    } catch (e) {}
-    setTimeout(poll, 500);
+(function () {
+  const target  = {{ target }};
+  const video   = document.getElementById('cam');
+  const overlay = document.getElementById('overlay');
+  const ctx     = overlay.getContext('2d');
+  const errBox  = document.getElementById('camError');
+  const hint    = document.getElementById('capHint');
+  const numEl   = document.getElementById('capCount');
+  const barEl   = document.getElementById('capBar');
+  let finished  = false;
+
+  function showError(msg) {
+    errBox.textContent = msg;
+    errBox.style.display = '';
+    hint.textContent = 'Camera unavailable.';
   }
-  poll();
+
+  function drawBoxes(boxes, srcW, srcH) {
+    // The frame was downscaled before upload, so box coordinates are in the
+    // uploaded frame's space. Map them onto the displayed video element.
+    const rect = video.getBoundingClientRect();
+    overlay.width  = rect.width;
+    overlay.height = rect.height;
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (!boxes || !boxes.length || !srcW || !srcH) return;
+    const sx = overlay.width / srcW, sy = overlay.height / srcH;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#38bdf8';
+    boxes.forEach(function (b) {
+      ctx.strokeRect(b[0] * sx, b[1] * sy, b[2] * sx, b[3] * sy);
+    });
+  }
+
+  const cam = FaceMarkCamera.create({
+    video: video,
+    mode: 'register',
+    name: {{ name | tojson }},
+    uid:  {{ uid  | tojson }},
+    fps: 5,
+    onError: function (msg) { showError(msg); cam.stop(); },
+    onResult: function (j) {
+      if (finished) return;
+      numEl.textContent = j.count;
+      barEl.style.width = Math.round(100 * j.count / target) + '%';
+      // Frames are downscaled to 640 wide by the capture module.
+      const srcW = 640, srcH = Math.round(640 * video.videoHeight / (video.videoWidth || 640));
+      drawBoxes(j.boxes, srcW, srcH);
+      hint.textContent = j.faces
+        ? 'Face detected — hold still, turn slightly.'
+        : 'No face detected. Move into the light and face the camera.';
+      if (j.done || j.count >= target) {
+        finished = true;
+        hint.textContent = 'Done — training the model…';
+        cam.stop();
+        window.location.href = {{ url_for('home') | tojson }};
+      }
+    }
+  });
+
+  cam.start().then(function (ok) {
+    if (ok) hint.textContent = 'Camera live. Look at the lens.';
+  });
+
+  // Release the camera if the operator navigates away mid-enrolment.
+  window.addEventListener('pagehide', function () { cam.stop(); });
+})();
 </script>
 {% endblock %}

@@ -27,7 +27,11 @@ import face_utils
 
 log = logging.getLogger(__name__)
 
-MODEL_DIR = 'static'
+# Anchored to this file, not the CWD. A relative 'static' silently wrote the
+# trained model into whatever directory the process happened to start in, so a
+# service started from outside the project root would train successfully and
+# then never find its own model again.
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 LBPH_MODEL = os.path.join(MODEL_DIR, 'lbph_model.yml')
 LBPH_LABELS = os.path.join(MODEL_DIR, 'lbph_labels.json')
 KNN_MODEL = os.path.join(MODEL_DIR, 'knn_model.pkl')
@@ -198,18 +202,84 @@ def _pick_backend():
     return LBPHRecognizer() if HAS_LBPH else KNNFallbackRecognizer()
 
 
+# The `recognition_threshold` setting is a single number on the LBPH distance
+# scale — its default, 80, is exactly LBPHRecognizer.default_threshold. But each
+# backend reports distance on its own scale: LBPH ~0-150, the raw-pixel KNN
+# fallback in the thousands, cosine embeddings 0-2. Comparing the configured 80
+# against all three meant the fallback accepted nothing (nobody is ever
+# recognised) and embeddings accepted everything (every face matches whoever is
+# nearest). Both fail silently — the stream just quietly stops identifying
+# people, or confidently mislabels them.
+#
+# So treat the stored value as strictness *relative to the LBPH default* and
+# project it onto whichever backend is live. 80 maps to each backend's own
+# default; tightening to 60 tightens every backend by the same 25%.
+LBPH_REFERENCE_THRESHOLD = 80.0
+
+
+def scale_threshold(configured: float, rec: '_BaseRecognizer' = None) -> float:
+    """Map an LBPH-scale threshold onto the active backend's distance scale."""
+    if rec is None:
+        rec = get()
+    native = getattr(rec, 'default_threshold', LBPH_REFERENCE_THRESHOLD)
+    return float(configured) * (native / LBPH_REFERENCE_THRESHOLD)
+
+
+def _model_stamp() -> tuple:
+    """(mtime, size) of the on-disk model, or (0, 0) when untrained."""
+    for path in (LBPH_MODEL, KNN_MODEL):
+        try:
+            st = os.stat(path)
+            return (st.st_mtime, st.st_size)
+        except OSError:
+            continue
+    return (0.0, 0)
+
+
 def get() -> _BaseRecognizer:
-    """Return a singleton recogniser of the best available backend."""
+    """Return the singleton recogniser, reloading it if the model changed.
+
+    The instance caches the trained model in memory. Under `gunicorn -w N` each
+    worker is a separate process, so a retrain triggered by an enrolment in one
+    worker left every other worker predicting against the model it loaded at
+    boot — a freshly enrolled person stayed unrecognised until the next deploy.
+    Re-reading when the file's mtime/size changes keeps the workers in step at
+    the cost of one stat() per call.
+    """
+    global _instance, _loaded_stamp
+    stamp = _model_stamp()
+    if stamp != _loaded_stamp:
+        _instance = _pick_backend()
+        _loaded_stamp = stamp
+        log.info('recogniser reloaded from disk (backend=%s)', _instance.name)
     return _instance
 
 
 _instance: _BaseRecognizer = LBPHRecognizer() if HAS_LBPH else KNNFallbackRecognizer()
+_loaded_stamp: tuple = _model_stamp()
 log.info('recogniser backend: %s', _instance.name)
+
+if not HAS_LBPH:
+    # Worth shouting about: requirements.txt asks for opencv-contrib-python, so
+    # arriving here means something replaced or shadowed it. Installing plain
+    # `opencv-python` alongside contrib is the usual cause — both provide the
+    # `cv2` module and whichever pip wrote last wins, taking cv2.face with it.
+    # Accuracy silently drops to raw-pixel KNN, which is far more sensitive to
+    # lighting and pose.
+    log.warning(
+        'cv2.face is unavailable - falling back to raw-pixel KNN, which is much '
+        'less accurate. This usually means opencv-python is installed alongside '
+        'opencv-contrib-python and is shadowing it. Fix with: '
+        'pip uninstall -y opencv-python opencv-contrib-python && '
+        'pip install opencv-contrib-python'
+    )
 
 
 def retrain(faces_dir: str) -> bool:
-    global _instance
+    global _instance, _loaded_stamp
     _instance = _pick_backend()
-    if hasattr(_instance, 'train'):
-        return _instance.train(faces_dir)
-    return False
+    ok = _instance.train(faces_dir) if hasattr(_instance, 'train') else False
+    # Record the stamp we just wrote so get() does not immediately reload in
+    # the worker that did the training.
+    _loaded_stamp = _model_stamp()
+    return ok

@@ -23,10 +23,47 @@ BLUR_THRESHOLD = 60.0             # Laplacian variance below this = too blurry
 _HAAR_FACE = 'haarcascade_frontalface_default.xml'
 _HAAR_EYE = 'haarcascade_eye.xml'
 
-# OpenCV ships eye + face cascades in cv2.data.haarcascades
-_face_cascade = cv2.CascadeClassifier(_HAAR_FACE)
-_eye_cascade_path = os.path.join(cv2.data.haarcascades, _HAAR_EYE)
-_eye_cascade = cv2.CascadeClassifier(_eye_cascade_path) if os.path.exists(_eye_cascade_path) else None
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _find_cascade(filename: str) -> str | None:
+    """Locate a Haar XML by absolute path.
+
+    Order: OpenCV's bundled data dir (always present with opencv-python), then
+    a copy sitting next to this module, then the process CWD.
+
+    The face cascade used to be loaded as the bare relative name
+    'haarcascade_frontalface_default.xml'. That only resolves when the process
+    happens to be started from the repo root — a systemd unit without
+    WorkingDirectory=, a `python /path/to/app.py` from elsewhere, or any
+    supervisor with a different CWD gets an *empty* classifier. OpenCV does not
+    raise on the failed load; it raises later, on every single frame, with
+    "(-215:Assertion failed) !empty() in function 'detectMultiScale'", which
+    reads like a corrupt-image bug rather than a missing-file one.
+    """
+    for candidate in (os.path.join(cv2.data.haarcascades, filename),
+                      os.path.join(_HERE, filename),
+                      os.path.abspath(filename)):
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
+_face_cascade_path = _find_cascade(_HAAR_FACE)
+if _face_cascade_path is None:
+    raise RuntimeError(
+        f'Cannot find {_HAAR_FACE}. Looked in cv2.data.haarcascades '
+        f'({cv2.data.haarcascades}), {_HERE}, and the CWD. Reinstall '
+        'opencv-contrib-python or restore the XML to the project root.'
+    )
+_face_cascade = cv2.CascadeClassifier(_face_cascade_path)
+if _face_cascade.empty():
+    raise RuntimeError(f'{_face_cascade_path} exists but failed to parse.')
+
+_eye_cascade_path = _find_cascade(_HAAR_EYE)
+_eye_cascade = cv2.CascadeClassifier(_eye_cascade_path) if _eye_cascade_path else None
+if _eye_cascade is not None and _eye_cascade.empty():
+    _eye_cascade = None      # align_face() degrades to a no-op
 
 
 # ---------------------------------------------------------------------------

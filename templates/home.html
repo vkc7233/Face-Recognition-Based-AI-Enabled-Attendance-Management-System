@@ -111,6 +111,9 @@
       </div>
       <div class="surface-body">
         <div class="video-wrap">
+          <!-- Capture source: this browser's webcam. Hidden, because what the
+               operator sees is the annotated frame the server sends back. -->
+          <video id="camSrc" autoplay playsinline muted style="display:none"></video>
           <img id="videoStream" alt="">
           <div id="videoOverlay" class="video-overlay">
             <div class="vo-icon"><i class="material-icons">videocam_off</i></div>
@@ -333,6 +336,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/browser-camera.js') }}?v={{ asset_version }}" nonce="{{ csp_nonce() }}"></script>
 <script nonce="{{ csp_nonce() }}">
   document.querySelectorAll('.kpi-value[data-count]').forEach(el => {
     const target = parseInt(el.dataset.count || '0', 10);
@@ -382,13 +386,35 @@
     }).catch(() => {});
   }
 
+  // Recognition runs off this browser's camera: frames are POSTed to
+  // /api/camera/frame and the annotated result is shown in #videoStream. The
+  // server's own /video_feed is only usable on an on-premise box that has a
+  // camera plugged into it.
+  const cam = FaceMarkCamera.create({
+    video: document.getElementById('camSrc'),
+    mode: 'recognise',
+    wantImage: true,
+    fps: 4,
+    onError: (msg) => {
+      window.toast(msg, 'danger', 7000);
+      cam.stop();
+      img.removeAttribute('src');
+      overlay.style.display = '';
+      startBtn.disabled = false; stopBtn.disabled = true;
+      if (livePoll)    clearInterval(livePoll);
+      if (capturePoll) clearInterval(capturePoll);
+    },
+    onResult: (j) => { if (j.image) img.src = j.image; }
+  });
+
   startBtn?.addEventListener('click', async () => {
     startBtn.disabled = true;
     try {
       const r = await fetch('/start_recognise', { method: 'POST' });
       const j = await r.json();
       if (!j.ok) { startBtn.disabled = false; window.toast(j.msg || 'Failed to start.', 'warn'); return; }
-      img.src = '/video_feed?ts=' + Date.now();
+      const started = await cam.start();
+      if (!started) { startBtn.disabled = false; return; }   // onError already toasted
       overlay.style.display = 'none';
       stopBtn.disabled = false;
       window.toast('Recognition started. Crowd mode active.', 'success');
@@ -397,6 +423,7 @@
     } catch { startBtn.disabled = false; window.toast('Network error.', 'danger'); }
   });
   stopBtn?.addEventListener('click', async () => {
+    cam.stop();
     await fetch('/stop_capture', { method: 'POST' });
     img.removeAttribute('src');
     overlay.style.display = '';
@@ -405,6 +432,7 @@
     if (capturePoll) clearInterval(capturePoll);
     setTimeout(() => location.reload(), 350);
   });
+  window.addEventListener('pagehide', () => cam.stop());
 
   document.getElementById('rowSearch').addEventListener('input', e => {
     const q = e.target.value.toLowerCase();

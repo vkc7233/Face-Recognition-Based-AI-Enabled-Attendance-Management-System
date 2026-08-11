@@ -134,6 +134,9 @@
 
   <div class="stage">
     <div class="video-pane">
+      <!-- Capture source: the kiosk machine's own webcam, read in the browser.
+           #vid shows the annotated frame the server sends back. -->
+      <video id="camSrc" autoplay playsinline muted style="display:none"></video>
       <img id="vid" alt="">
       <div class="video-corner"><span class="rec-dot"></span> LIVE · KIOSK</div>
     </div>
@@ -166,6 +169,7 @@
   </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/browser-camera.js') }}?v={{ asset_version }}" nonce="{{ csp_nonce() }}"></script>
 <script nonce="{{ csp_nonce() }}">
   // ─── Clock ───
   function tick(){
@@ -178,18 +182,37 @@
   setInterval(tick, 1000); tick();
 
   // ─── Start recognition automatically ───
+  // kiosk.html is standalone — it does not extend base.html, so it does not
+  // get base.html's window.fetch CSRF wrapper and must send the header itself.
+  const CSRF = '{{ csrf_token() }}';
+
+  let kioskCam = null;
   (async function start() {
     try {
-      const r = await fetch('/start_recognise', { method: 'POST' });
+      const r = await fetch('/start_recognise',
+                            { method: 'POST', headers: { 'X-CSRF-Token': CSRF } });
       const j = await r.json();
-      if (j.ok) {
-        document.getElementById('vid').src = '/video_feed?ts=' + Date.now();
-      } else {
+      if (!j.ok) {
         document.getElementById('name').textContent = 'No model trained';
         document.getElementById('meta').textContent = j.msg || '';
+        return;
       }
+      kioskCam = FaceMarkCamera.create({
+        video: document.getElementById('camSrc'),
+        mode: 'recognise',
+        wantImage: true,
+        fps: 4,
+        csrf: CSRF,
+        onError: (msg) => {
+          document.getElementById('name').textContent = 'Camera unavailable';
+          document.getElementById('meta').textContent = msg;
+        },
+        onResult: (res) => { if (res.image) document.getElementById('vid').src = res.image; }
+      });
+      await kioskCam.start();
     } catch(e) {}
   })();
+  window.addEventListener('pagehide', () => { if (kioskCam) kioskCam.stop(); });
 
   // ─── Sound ───
   let audioCtx = null;
